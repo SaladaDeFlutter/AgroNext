@@ -107,11 +107,8 @@ export const asaasController = {
       const uniquePayments: AsaasPaymentData[] = [];
       const installmentGroups: Record<string, InstallmentGroup> = {};
 
-      const installmentIds = [...new Set(
-        routePayments
-          .map(rp => rp.payment.installmentAsaasId)
-          .filter((id): id is string => id !== null)
-      )];
+      const asaasPaymentIds = routePayments.map(rp => rp.payment.asaasId);
+      const asaasPaymentSet = new Set(asaasPaymentIds);
 
       const customerIds = [...new Set(
         routePayments
@@ -126,85 +123,119 @@ export const asaasController = {
       const clientAsaasMap = new Map(dbClients.map(c => [c.id, c]));
       const asaasNameMap = new Map(dbClients.map(c => [c.asaasId, c.name]));
 
-      const installmentMap = new Map<string, AsaasInstallment>();
+      // Build a local fallback map keyed by asaasId
+      const localPaymentMap = new Map<string, typeof routePayments[0]['payment']>();
+      for (const rp of routePayments) {
+        localPaymentMap.set(rp.payment.asaasId, rp.payment);
+      }
+
+      // Batch-fetch payments by customer (1 call per customer instead of 1 per payment)
+      const asaasPaymentMap = new Map<string, AsaasPayment>();
       const customerMap = new Map<string, AsaasCustomer>();
+      const installmentMap = new Map<string, AsaasInstallment>();
 
-      for (const installmentId of installmentIds) {
+      const uniqueAsaasCustomerIds = [...new Set(dbClients.map(c => c.asaasId))];
+
+      for (const asaasCustomerId of uniqueAsaasCustomerIds) {
+        let customer: AsaasCustomer | undefined;
         try {
-          const installment = await asaas.getInstallment(installmentId);
-          installmentMap.set(installmentId, installment);
+          const [fetchedCustomer, fetchedPayments] = await Promise.all([
+            asaas.getCustomer(asaasCustomerId),
+            asaas.getPayments(asaasCustomerId),
+          ]);
+          customer = fetchedCustomer;
+          customerMap.set(asaasCustomerId, fetchedCustomer);
 
-          const customer = await asaas.getCustomer(installment.customer);
-          customerMap.set(installment.customer, customer);
+          for (const pmt of fetchedPayments) {
+            if (asaasPaymentSet.has(pmt.id)) {
+              asaasPaymentMap.set(pmt.id, pmt);
+            }
+          }
         } catch (err) {
-          console.log(`Erro ao buscar installment ${installmentId}:`, err);
+          console.log(`Erro ao buscar dados do cliente ${asaasCustomerId}:`, err);
+        }
+
+        if (!customer) {
+          customerMap.set(asaasCustomerId, {
+            id: asaasCustomerId,
+            name: asaasNameMap.get(asaasCustomerId) || 'Cliente',
+          } as AsaasCustomer);
         }
       }
 
-      for (const routePayment of routePayments) {
-        let payment: AsaasPaymentData | null = null;
-
+      // Also fetch installments for payments that belong to one
+      const installmentIds = [...new Set(
+        routePayments
+          .map(rp => rp.payment.installmentAsaasId)
+          .filter((i): i is string => i !== null)
+      )];
+      for (const instId of installmentIds) {
         try {
-          payment = { ...(await asaas.getPayment(routePayment.payment.asaasId)) } as AsaasPaymentData;
+          const installment = await asaas.getInstallment(instId);
+          installmentMap.set(instId, installment);
         } catch (err) {
-          console.log(`Erro ao buscar payment ${routePayment.payment.asaasId}, usando fallback local:`, err);
-          const p = routePayment.payment;
-          const client = p.clientId ? clientAsaasMap.get(p.clientId) : null;
-          payment = {
+          console.log(`Erro ao buscar installment ${instId}:`, err);
+        }
+      }
+
+      // Build response using asaas data when available, fallback to local DB
+      for (const routePayment of routePayments) {
+        const p = routePayment.payment;
+        const asaasPayment = asaasPaymentMap.get(p.asaasId);
+        const client = p.clientId ? clientAsaasMap.get(p.clientId) : null;
+        const customerId = client?.asaasId || p.clientId || '';
+
+        let paymentData: AsaasPaymentData;
+
+        if (asaasPayment) {
+          paymentData = {
+            ...asaasPayment,
+            customerData: customerMap.get(customerId),
+          } as AsaasPaymentData;
+        } else {
+          paymentData = {
             id: p.asaasId,
-            customer: client?.asaasId || p.clientId || '',
+            customer: customerId,
             billingType: p.billingType,
             value: p.value,
             dueDate: p.dueDate.toISOString().split('T')[0],
             status: p.status,
             installment: p.installmentAsaasId || undefined,
             installmentNumber: p.installmentNumber || undefined,
-            customerData: client ? { id: client.asaasId, name: client.name } : undefined,
+            customerData: customerMap.get(customerId),
           } as AsaasPaymentData;
-        }
-
-        const customerId = payment.customer;
-
-        if (!customerMap.has(customerId)) {
-          try {
-            const customer = await asaas.getCustomer(customerId);
-            customerMap.set(customerId, customer);
-          } catch (err) {
-            console.log(`Erro ao buscar customer ${customerId}, usando fallback:`, err);
-            customerMap.set(customerId, { id: customerId, name: asaasNameMap.get(customerId) || 'Cliente', cpfCnpj: undefined });
-          }
         }
 
         const prog = refreshProgress.get(progressKey);
         if (prog) prog.current++;
 
-        if (payment.installment) {
-          if (!installmentGroups[payment.installment]) {
-            const installment = installmentMap.get(payment.installment);
+        if (paymentData.installment) {
+          if (!installmentGroups[paymentData.installment]) {
+            const installment = installmentMap.get(paymentData.installment);
             const customer = customerMap.get(customerId);
 
-            installmentGroups[payment.installment] = {
-              installmentId: payment.installment,
+            installmentGroups[paymentData.installment] = {
+              installmentId: paymentData.installment,
               customerId,
               customerName: customer?.name || 'Cliente',
               totalValue: installment?.totalValue || installment?.value || 0,
               installmentCount: installment?.installmentCount || 0,
               valuePerInstallment: installment?.paymentValue || (installment?.value || 0) / (installment?.installmentCount || 1),
-              status: payment.status,
-              dueDate: payment.dueDate,
+              status: paymentData.status,
+              dueDate: paymentData.dueDate,
               customerData: customer,
               installmentData: installment,
               payments: []
             };
           }
 
-          installmentGroups[payment.installment].payments.push({
-            ...payment,
+          installmentGroups[paymentData.installment].payments.push({
+            ...paymentData,
             customerData: customerMap.get(customerId)
           });
         } else {
           uniquePayments.push({
-            ...payment,
+            ...paymentData,
             customerData: customerMap.get(customerId)
           });
         }
