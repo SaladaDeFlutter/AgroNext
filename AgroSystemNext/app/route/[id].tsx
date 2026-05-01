@@ -12,17 +12,18 @@ import {
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateInadimplentesHtml } from './inadimplentesPdf';
+import { AppColors } from '@/constants/theme';
 
 const isWeb = Platform.OS === 'web';
 
-const GREEN_MAIN = '#15B86A';
-const BG_DARK = '#0d0d0d';
-const CARD_DARK = '#1f1f1f';
-const CARD_BG = CARD_DARK;
-const INPUT_BG = '#2a2a2a';
-const TEXT_LIGHT = '#f0f0f0';
-const TEXT_MID = '#a0a0a0';
-const BORDER_GREY = '#404040';
+const GREEN_MAIN = AppColors.green;
+const BG_DARK = AppColors.bg;
+const CARD_DARK = AppColors.card;
+const CARD_BG = AppColors.card;
+const INPUT_BG = AppColors.inputBg;
+const TEXT_LIGHT = AppColors.text;
+const TEXT_MID = AppColors.textMid;
+const BORDER_GREY = AppColors.border;
 
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

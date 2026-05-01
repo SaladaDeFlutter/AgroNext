@@ -1,13 +1,13 @@
 import { Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../middleware/errorHandler.js';
 import { AsaasClient } from '../api/asaasClient.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const getAsaasClient = () => new AsaasClient(process.env.ASAAS_ACCESS_TOKEN || '');
+const asaas = new AsaasClient(process.env.ASAAS_ACCESS_TOKEN || '');
 
 export const paymentController = {
   async findByClient(req: AuthRequest, res: Response, next: NextFunction) {
@@ -26,8 +26,6 @@ export const paymentController = {
           throw new AppError('Cliente não encontrado', 404);
         }
       }
-      
-      const asaas = getAsaasClient();
       
       const [asaasPayments, asaasInstallments] = await Promise.all([
         asaas.getPayments(asaasId),
@@ -139,108 +137,4 @@ export const paymentController = {
     }
   },
 
-  async addToRoute(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const { routeId, paymentId } = req.body;
-      
-      const route = await prisma.route.findUnique({ where: { id: routeId } });
-      if (!route) {
-        throw new AppError('Rota não encontrada', 404);
-      }
-      
-      const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
-      if (!payment) {
-        throw new AppError('Pagamento não encontrado', 404);
-      }
-      
-      const existing = await prisma.routePayment.findUnique({
-        where: {
-          routeId_paymentId: { routeId, paymentId }
-        }
-      });
-      
-      if (existing) {
-        throw new AppError('Pagamento já está na rota', 400);
-      }
-      
-      await prisma.routePayment.create({
-        data: { routeId, paymentId },
-      });
-      
-      res.json({ 
-        status: 'success', 
-        message: 'Pagamento adicionado à rota',
-        data: { paymentId }
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async addInstallmentToRoute(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const { routeId, installmentAsaasId } = req.body;
-      
-      const route = await prisma.route.findUnique({ where: { id: routeId } });
-      if (!route) {
-        throw new AppError('Rota não encontrada', 404);
-      }
-      
-      const payments = await prisma.payment.findMany({
-        where: { installmentAsaasId }
-      });
-      
-      if (payments.length === 0) {
-        throw new AppError('Nenhum pagamento encontrado para este parcelamento', 404);
-      }
-      
-      const existingPayments = await prisma.routePayment.findMany({
-        where: {
-          routeId,
-          paymentId: { in: payments.map(p => p.id) }
-        },
-        select: { paymentId: true }
-      });
-      
-      const existingIds = new Set(existingPayments.map(ep => ep.paymentId));
-      const newPayments = payments.filter(p => !existingIds.has(p.id));
-      
-      if (newPayments.length > 0) {
-        await prisma.routePayment.createMany({
-          data: newPayments.map(p => ({
-            routeId,
-            paymentId: p.id
-          })),
-          skipDuplicates: true
-        });
-      }
-      
-      res.json({ 
-        status: 'success', 
-        message: 'Parcelamento adicionado à rota',
-        data: { 
-          payments: newPayments.length,
-          installmentAsaasId,
-        } 
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async removeFromRoute(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const { routeId, paymentId } = req.params;
-      
-      await prisma.routePayment.delete({
-        where: {
-          routeId_paymentId: { routeId, paymentId }
-        }
-      });
-      
-      res.json({ status: 'success', message: 'Pagamento removido da rota' });
-    } catch (error) {
-      next(error);
-    }
-  },
 };

@@ -4,10 +4,12 @@ import { Text, Surface, Provider as PaperProvider } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Leaf, FileText, LogOut, Route as RouteIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api } from '@/src/config/api';
+import { AppColors } from '@/constants/theme';
 
-const GREEN_MAIN = '#15B86A';
-const BG_DARK = '#0d0d0d';
-const CARD_DARK = '#1f1f1f';
+const GREEN_MAIN = AppColors.green;
+const BG_DARK = AppColors.bg;
+const CARD_DARK = AppColors.card;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -18,12 +20,9 @@ export default function HomeScreen() {
       try {
         const token = await AsyncStorage.getItem('token');
         if (token) {
-          const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/profile`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await response.json();
-          if (data.data?.name) {
-            setUserName(data.data.name);
+          const result = await api.auth.getProfile(token);
+          if (result.data?.name) {
+            setUserName(result.data.name);
           }
         }
       } catch (error) {
