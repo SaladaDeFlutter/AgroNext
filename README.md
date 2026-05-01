@@ -19,7 +19,7 @@
 
 ---
 
-## ⚡ Quick start
+## Quick start
 
 ```bash
 # 1. Inicie o banco
@@ -36,7 +36,7 @@ cd AgroSystemNext && npm start
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 ```
 AgroNext/
@@ -73,7 +73,7 @@ Asaas API ──► AgroServerNext ──► Banco (índice)
 
 ---
 
-## 🔌 API
+## API
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
@@ -92,25 +92,25 @@ Asaas API ──► AgroServerNext ──► Banco (índice)
 | `GET` | `/api/clients/:clientId/payments` | Pagamentos do cliente |
 | `GET` | `/api/users/sellers` | Listar vendedores |
 
-> 🔒 Todas as rotas (exceto `/api/auth/*`) exigem `Authorization: Bearer <token>`.
+> Todas as rotas (exceto `/api/auth/*`) exigem `Authorization: Bearer <token>`.
 
 ---
 
-## 📱 Funcionalidades
+## Funcionalidades
 
-- ✅ **Rotas de cobrança** — Criação e gerenciamento de rotas por mês/ano
-- ✅ **Dados ao vivo** — Busca de pagamentos e clientes diretamente do Asaas
-- ✅ **Parcelamentos** — Suporte a cobranças parceladas com agrupamento inteligente
-- ✅ **Cache híbrido** — AsyncStorage para carregamento instantâneo + refresh manual
-- ✅ **Ficha do cliente** — Número de ficha por cliente em cada rota
-- ✅ **Relatório PDF** — Geração de relatório de inadimplentes
-- ✅ **Autenticação** — JWT com verificação por email (SMTP)
-- ✅ **Multi-vendedor** — Suporte a múltiplos vendedores com rotas próprias
-- ✅ **Tema escuro** — Interface escura moderna e consistente
+- **Rotas de cobrança** — Criação e gerenciamento de rotas por mês/ano
+- **Dados ao vivo** — Busca de pagamentos e clientes diretamente do Asaas
+- **Parcelamentos** — Suporte a cobranças parceladas com agrupamento inteligente
+- **Cache híbrido** — AsyncStorage para carregamento instantâneo + refresh manual
+- **Ficha do cliente** — Número de ficha por cliente em cada rota
+- **Relatório PDF** — Geração de relatório de inadimplentes
+- **Autenticação** — JWT com verificação por email (SMTP)
+- **Multi-vendedor** — Suporte a múltiplos vendedores com rotas próprias
+- **Tema escuro** — Interface escura moderna e consistente
 
 ---
 
-## 🛠️ Comandos
+## Comandos
 
 ### Backend (`AgroServerNext/`)
 
@@ -134,7 +134,7 @@ Asaas API ──► AgroServerNext ──► Banco (índice)
 
 ---
 
-## 📦 Variáveis de Ambiente
+## Variáveis de Ambiente
 
 **Backend (`.env` em `AgroServerNext/`):**
 
@@ -156,7 +156,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000/api
 
 ---
 
-## 🗃️ Modelo de Dados
+## Modelo de Dados
 
 ```
 User ──► Route ──► RoutePayment ──► Payment ──► Client
@@ -171,11 +171,11 @@ User ──► Route ──► RoutePayment ──► Payment ──► Client
 - **WebhookLog** — Eventos recebidos do Asaas
 - **User** — Vendedor com autenticação JWT
 
-> 💡 Pagamento faz parte de parcelamento se `installmentAsaasId` não for nulo.
+> Pagamento faz parte de parcelamento se `installmentAsaasId` não for nulo.
 
 ---
 
-## 🚢 Deploy
+## Deploy
 
 ### Backend
 ```bash
@@ -195,5 +195,5 @@ npx expo export:web
 ---
 
 <p align="center">
-  Feito com 💚 por SaladaDeFlutter
+  Feito por SaladaDeFlutter
 </p>
