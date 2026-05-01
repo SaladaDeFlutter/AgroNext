@@ -1,0 +1,27 @@
+
+> agroservernext@1.0.0 start
+> tsx src/server.ts
+
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+🚀 Server running on port 3000
+📦 Environment: development
+ERROR: PrismaClientInitializationError: 
+Invalid `prisma.user.findUnique()` invocation in
+/home/flutter/Projetos/AgroNext/AgroServerNext/src/services/authService.ts:22:44
+
+  19 async register(data: RegisterData) {
+  20   const { name, email, password } = data;
+  21 
+→ 22   const existingUser = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at $n.handleRequestError (/home/flutter/Projetos/AgroNext/AgroServerNext/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/home/flutter/Projetos/AgroNext/AgroServerNext/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/home/flutter/Projetos/AgroNext/AgroServerNext/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at async l (/home/flutter/Projetos/AgroNext/AgroServerNext/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at async Object.register (/home/flutter/Projetos/AgroNext/AgroServerNext/src/services/authService.ts:22:26)
+    at async register (/home/flutter/Projetos/AgroNext/AgroServerNext/src/controllers/authController.ts:30:22) {
+  clientVersion: '5.22.0',
+  errorCode: undefined
+}

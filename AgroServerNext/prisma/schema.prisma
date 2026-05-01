@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  password     String
+  role         String   @default("seller")
+  verified     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  routes      Route[]
+}
+
+model Route {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  month       Int
+  year        Int
+  userId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id])
+  payments    RoutePayment[]
+  routeClients RouteClient[]
+}
+
+model Client {
+  id                     String   @id @default(uuid())
+  asaasId                String   @unique
+  name                   String
+  email                  String?
+  phone                  String?
+  mobilePhone            String?
+  cpfCnpj                String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  payments               Payment[]
+  routeClients           RouteClient[]
+}
+
+model Payment {
+  id                         String   @id @default(uuid())
+  asaasId                    String   @unique
+  installmentAsaasId         String?
+  installmentNumber          Int?
+  clientId                   String?
+  billingType                String
+  value                      Float
+  dueDate                    DateTime
+  status                    String
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  client                    Client?  @relation(fields: [clientId], references: [id])
+  routes                    RoutePayment[]
+}
+
+model RoutePayment {
+  id         String   @id @default(uuid())
+  routeId    String
+  paymentId  String
+  createdAt  DateTime @default(now())
+  route      Route    @relation(fields: [routeId], references: [id])
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+
+  @@unique([routeId, paymentId])
+}
+
+model RouteClient {
+  id          String   @id @default(uuid())
+  routeId     String
+  clientId    String
+  fichaNumber String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  route   Route   @relation(fields: [routeId], references: [id])
+  client  Client  @relation(fields: [clientId], references: [id])
+
+  @@unique([routeId, clientId])
+  @@map("route_clients")
+}
+
+model WebhookLog {
+  id          String   @id @default(uuid())
+  event       String
+  payload     Json
+  processed   Boolean  @default(false)
+  error       String?
+  createdAt   DateTime @default(now())
+}
