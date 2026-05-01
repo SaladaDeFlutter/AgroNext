@@ -61,6 +61,10 @@ export const asaasController = {
             select: {
               asaasId: true,
               clientId: true,
+              billingType: true,
+              value: true,
+              dueDate: true,
+              status: true,
               installmentAsaasId: true,
               installmentNumber: true,
             }
@@ -115,6 +119,13 @@ export const asaasController = {
           .filter((id): id is string => id !== null)
       )];
 
+      const dbClients = customerIds.length > 0 ? await prisma.client.findMany({
+        where: { id: { in: customerIds } },
+        select: { id: true, asaasId: true, name: true }
+      }) : [];
+      const clientAsaasMap = new Map(dbClients.map(c => [c.id, c]));
+      const asaasNameMap = new Map(dbClients.map(c => [c.asaasId, c.name]));
+
       const installmentMap = new Map<string, AsaasInstallment>();
       const customerMap = new Map<string, AsaasCustomer>();
 
@@ -136,8 +147,20 @@ export const asaasController = {
         try {
           payment = { ...(await asaas.getPayment(routePayment.payment.asaasId)) } as AsaasPaymentData;
         } catch (err) {
-          console.log(`Erro ao buscar payment ${routePayment.payment.asaasId}:`, err);
-          continue;
+          console.log(`Erro ao buscar payment ${routePayment.payment.asaasId}, usando fallback local:`, err);
+          const p = routePayment.payment;
+          const client = p.clientId ? clientAsaasMap.get(p.clientId) : null;
+          payment = {
+            id: p.asaasId,
+            customer: client?.asaasId || p.clientId || '',
+            billingType: p.billingType,
+            value: p.value,
+            dueDate: p.dueDate.toISOString().split('T')[0],
+            status: p.status,
+            installment: p.installmentAsaasId || undefined,
+            installmentNumber: p.installmentNumber || undefined,
+            customerData: client ? { id: client.asaasId, name: client.name } : undefined,
+          } as AsaasPaymentData;
         }
 
         const customerId = payment.customer;
@@ -148,7 +171,7 @@ export const asaasController = {
             customerMap.set(customerId, customer);
           } catch (err) {
             console.log(`Erro ao buscar customer ${customerId}, usando fallback:`, err);
-            customerMap.set(customerId, { id: customerId, name: 'Cliente', cpfCnpj: undefined });
+            customerMap.set(customerId, { id: customerId, name: asaasNameMap.get(customerId) || 'Cliente', cpfCnpj: undefined });
           }
         }
 
