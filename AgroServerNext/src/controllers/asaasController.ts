@@ -17,7 +17,9 @@ async function getTeamUserIds(userId: string): Promise<string[]> {
 }
 
 export function getRefreshProgress(routeId: string) {
-  return refreshProgress.get(`route-${routeId}`) || null;
+  const p = refreshProgress.get(`route-${routeId}`);
+  if (p) console.log(`[PROGRESS] poll: ${p.current}/${p.total}`);
+  return p || null;
 }
 
 interface RoutePaymentData {
@@ -120,6 +122,7 @@ export const asaasController = {
         if (cid) paymentCountPerClient.set(cid, (paymentCountPerClient.get(cid) || 0) + 1);
       }
       refreshProgress.set(progressKey, { total: routePayments.length, current: 0 });
+      console.log(`[PROGRESS] iniciado: 0/${routePayments.length}`);
 
       const uniquePayments: AsaasPaymentData[] = [];
       const installmentGroups: Record<string, InstallmentGroup> = {};
@@ -182,7 +185,9 @@ export const asaasController = {
         const prog = refreshProgress.get(progressKey);
         if (prog) {
           const cid = asaasToClientId.get(asaasCustomerId);
-          prog.current += paymentCountPerClient.get(cid || '') || 1;
+          const increment = paymentCountPerClient.get(cid || '') || 1;
+          prog.current += increment;
+          console.log(`[PROGRESS] ${asaasCustomerId}: +${increment} = ${prog.current}/${prog.total}`);
         }
       }
 
