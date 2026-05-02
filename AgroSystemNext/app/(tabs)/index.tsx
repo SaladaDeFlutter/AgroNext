@@ -112,7 +112,7 @@ export default function HomeScreen() {
 
           <TouchableOpacity onPress={() => setRegisterVisible(true)}>
             <Surface style={styles.card} elevation={2}>
-              <View style={[styles.cardIcon, { backgroundColor: '#1a2a3a' }]}>
+              <View style={[styles.cardIcon, { backgroundColor: '#1a4a2e' }]}>
                 <UserPlus size={28} color={GREEN_MAIN} />
               </View>
               <View style={styles.cardContent}>

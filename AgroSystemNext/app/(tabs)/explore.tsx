@@ -137,7 +137,7 @@ export default function SettingsTabScreen() {
           {userName ? <Text style={styles.userName}>{userName}</Text> : null}
         </View>
 
-        <ScrollView style={styles.content}>
+        <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
           <TouchableOpacity onPress={() => router.push('/settings')}>
             <Surface style={styles.card} elevation={2}>
               <View style={[styles.cardIcon, { backgroundColor: '#1a4a2e' }]}>
@@ -154,7 +154,7 @@ export default function SettingsTabScreen() {
           </TouchableOpacity>
 
           <Surface style={styles.card} elevation={2}>
-            <View style={[styles.cardIcon, { backgroundColor: '#1a2a3a' }]}>
+            <View style={[styles.cardIcon, { backgroundColor: '#1a4a2e' }]}>
               <Users size={24} color={AppColors.green} />
             </View>
             <View style={styles.cardContent}>
@@ -244,11 +244,11 @@ export default function SettingsTabScreen() {
               </Button>
             </>
           )}
-
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Sair</Text>
-          </TouchableOpacity>
         </ScrollView>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Sair</Text>
+        </TouchableOpacity>
       </View>
     </PaperProvider>
   );
@@ -267,7 +267,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
   userName: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
-  content: { flex: 1, padding: 20 },
+  scrollArea: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 100 },
   card: {
     flexDirection: 'row', alignItems: 'center', padding: 16,
     borderRadius: 12, backgroundColor: AppColors.card, marginBottom: 16,

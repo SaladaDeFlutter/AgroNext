@@ -348,6 +348,7 @@ const styles = StyleSheet.create({
     backgroundColor: INPUT_BG,
     borderRadius: 12,
     marginBottom: 14,
+    gap: 12,
   },
   dropdownTrigger: {
     borderWidth: 1,
