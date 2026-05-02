@@ -148,3 +148,17 @@ Usuário pode cadastrar múltiplas chaves Asaas no frontend (Config > Chaves da 
 Usuários podem definir um `teamId` em Config > Time. Usuários com o mesmo `teamId` enxergam as rotas uns dos outros. Sem time, o usuário vê apenas as próprias rotas.
 
 Ao definir um time, um código de convite único é gerado. Outros usuários entram no time usando esse código (`POST /auth/team/join`). O código é visível apenas para quem criou o time (`GET /auth/team/invite`).
+
+### Equipes (Team + TeamMember)
+
+Times agora são entidades próprias com `Team` e `TeamMember`. Usuários criam uma equipe em Config > Equipe, geram um código de convite único, e outros usuários entram com esse código. Admins podem remover membros e regenerar o código.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/teams` | Criar equipe |
+| POST | `/api/teams/join` | Entrar por código |
+| GET | `/api/teams/my` | Minha equipe + membros |
+| POST | `/api/teams/refresh-invite` | Regenerar código (admin) |
+| DELETE | `/api/teams/members/:userId` | Remover membro (admin) |
+
+**Visibilidade de rotas:** o backend busca todos os `userId` da equipe do usuário e filtra rotas por `userId IN [...]`. Rota sem `teamId` — o dono da rota decide visibilidade pelo time que participa.

@@ -4,16 +4,22 @@ import { routeService } from '../services/routeService.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 
+async function getTeamUserIds(userId: string): Promise<string[]> {
+  const membership = await prisma.teamMember.findFirst({
+    where: { userId },
+    include: { team: { include: { members: { select: { userId: true } } } } },
+  });
+  if (!membership) return [];
+  return membership.team.members.map(m => m.userId);
+}
+
 export const routeController = {
   async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { name, description, month, year } = req.body;
-      const userId = req.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
       const result = await routeService.create({
         name, description, month, year,
-        userId,
-        teamId: user?.teamId || undefined,
+        userId: req.userId!,
       });
       res.status(201).json({ status: 'success', data: result });
     } catch (error) {
@@ -23,12 +29,9 @@ export const routeController = {
 
   async findAll(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
-      const where: any = user?.teamId
-        ? { OR: [{ teamId: user.teamId }, { userId }] }
-        : { userId };
-      const result = await routeService.findAll(where);
+      const teamUserIds = await getTeamUserIds(req.userId!);
+      const visibleIds = [req.userId!, ...teamUserIds.filter(id => id !== req.userId)];
+      const result = await routeService.findAll({ userId: { in: visibleIds } });
       res.status(200).json({ status: 'success', data: result });
     } catch (error) {
       next(error);
@@ -38,13 +41,15 @@ export const routeController = {
   async findById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const userId = req.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
-      const route = await prisma.route.findUnique({ where: { id }, select: { userId: true, teamId: true } });
-      if (!route) throw new AppError('Rota não encontrada', 404);
+      const teamUserIds = await getTeamUserIds(req.userId!);
+      const visibleIds = [req.userId!, ...teamUserIds];
 
-      const canAccess = route.userId === userId || (user?.teamId && route.teamId === user.teamId);
-      if (!canAccess) throw new AppError('Acesso negado', 403);
+      const route = await prisma.route.findUnique({
+        where: { id },
+        select: { userId: true },
+      });
+      if (!route) throw new AppError('Rota não encontrada', 404);
+      if (!visibleIds.includes(route.userId || '')) throw new AppError('Acesso negado', 403);
 
       const result = await routeService.findById(id);
       res.status(200).json({ status: 'success', data: result });
@@ -56,13 +61,15 @@ export const routeController = {
   async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const userId = req.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
-      const route = await prisma.route.findUnique({ where: { id }, select: { userId: true, teamId: true } });
-      if (!route) throw new AppError('Rota não encontrada', 404);
+      const teamUserIds = await getTeamUserIds(req.userId!);
+      const visibleIds = [req.userId!, ...teamUserIds];
 
-      const canAccess = route.userId === userId || (user?.teamId && route.teamId === user.teamId);
-      if (!canAccess) throw new AppError('Acesso negado', 403);
+      const route = await prisma.route.findUnique({
+        where: { id },
+        select: { userId: true },
+      });
+      if (!route) throw new AppError('Rota não encontrada', 404);
+      if (!visibleIds.includes(route.userId || '')) throw new AppError('Acesso negado', 403);
 
       await routeService.delete(id);
       res.status(200).json({ status: 'success', message: 'Rota excluída com sucesso' });

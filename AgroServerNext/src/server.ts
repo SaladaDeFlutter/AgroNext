@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import routesRoutes from './routes/routes.js';
 import clientsRoutes from './routes/clients.js';
 import paymentsRoutes from './routes/payments.js';
+import teamsRoutes from './routes/teams.js';
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', routesRoutes);
 app.use('/api', clientsRoutes);
 app.use('/api', paymentsRoutes);
+app.use('/api', teamsRoutes);
 
 app.use(errorHandler);
 

@@ -2,99 +2,116 @@ import * as React from 'react';
 import { StyleSheet, View, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text, Surface, Provider as PaperProvider, Button, TextInput } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { Key, ChevronRight, Leaf, Users, Check, Copy, LogIn } from 'lucide-react-native';
+import { Key, ChevronRight, Leaf, Users, Copy, LogIn, RefreshCw, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/constants/theme';
 import { getFullHeaders } from '@/src/config/api';
 
+const API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+
 export default function SettingsTabScreen() {
   const router = useRouter();
   const [userName, setUserName] = React.useState('');
-  const [teamId, setTeamId] = React.useState('');
-  const [inviteCode, setInviteCode] = React.useState('');
-  const [teamInput, setTeamInput] = React.useState('');
-  const [joinInput, setJoinInput] = React.useState('');
+  const [team, setTeam] = React.useState<any>(null);
+  const [teamName, setTeamName] = React.useState('');
+  const [joinCode, setJoinCode] = React.useState('');
   const [tokenCount, setTokenCount] = React.useState(0);
-  const [savingTeam, setSavingTeam] = React.useState(false);
-  const [joining, setJoining] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+
+  const token = React.useRef<string | null>(null);
+  const headers = React.useCallback(async () => getFullHeaders(token.current || undefined), []);
 
   React.useEffect(() => {
-    loadData();
+    (async () => {
+      token.current = await AsyncStorage.getItem('token');
+      if (token.current) loadData();
+    })();
   }, []);
 
-  const loadData = async () => {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) return;
-    try {
-      const [profileRes, inviteRes] = await Promise.all([
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/profile`, {
-          headers: await getFullHeaders(token),
-        }),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/team/invite`, {
-          headers: await getFullHeaders(token),
-        }),
-      ]);
-      const profile = await profileRes.json();
-      if (profile.data?.name) setUserName(profile.data.name);
-      if (profile.data?.teamId) {
-        setTeamId(profile.data.teamId);
-        setTeamInput(profile.data.teamId);
-      }
-      const invite = await inviteRes.json();
-      if (invite.data?.inviteCode) setInviteCode(invite.data.inviteCode);
-    } catch (_) {}
-    const tokens = await AsyncStorage.getItem('asaas_tokens');
-    if (tokens) setTokenCount(JSON.parse(tokens).length);
+  const apiFetch = async (path: string, opts?: RequestInit) => {
+    const res = await fetch(`${API}${path}`, { headers: await headers(), ...opts });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    return data;
   };
 
-  const saveTeam = async () => {
-    setSavingTeam(true);
+  const loadData = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      const headers = await getFullHeaders(token || undefined);
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/team`, {
-        method: 'PATCH', headers, body: JSON.stringify({ teamId: teamInput.trim() || null }),
+      const [profileRes, teamRes] = await Promise.all([
+        apiFetch('/auth/profile'),
+        apiFetch('/teams/my'),
+      ]);
+      if (profileRes.data?.name) setUserName(profileRes.data.name);
+      setTeam(teamRes.data);
+      setTeamName(teamRes.data?.name || '');
+    } catch (_) {}
+    const t = await AsyncStorage.getItem('asaas_tokens');
+    if (t) setTokenCount(JSON.parse(t).length);
+  };
+
+  const createTeam = async () => {
+    if (!teamName.trim()) return Alert.alert('Erro', 'Digite um nome para a equipe');
+    setLoading(true);
+    try {
+      const data = await apiFetch('/teams', {
+        method: 'POST',
+        body: JSON.stringify({ name: teamName.trim() }),
+        headers: { 'Content-Type': 'application/json' },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setTeamId(teamInput.trim());
-      setInviteCode(data.data?.inviteCode || '');
-      Alert.alert('Time atualizado', data.data?.inviteCode
-        ? `Compartilhe o código com seu time: ${data.data.inviteCode}`
-        : 'Time removido');
+      setTeam({ ...data.data, members: [{ name: userName, role: 'admin' }], myRole: 'admin' });
+      Alert.alert('Equipe criada', `Código: ${data.data.inviteCode}`);
     } catch (err: any) {
       Alert.alert('Erro', err.message);
     } finally {
-      setSavingTeam(false);
+      setLoading(false);
     }
   };
 
   const joinTeam = async () => {
-    if (!joinInput.trim()) return;
-    setJoining(true);
+    if (!joinCode.trim()) return;
+    setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('token');
-      const headers = await getFullHeaders(token || undefined);
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/team/join`, {
-        method: 'POST', headers, body: JSON.stringify({ inviteCode: joinInput.trim() }),
+      const data = await apiFetch('/teams/join', {
+        method: 'POST',
+        body: JSON.stringify({ inviteCode: joinCode.trim() }),
+        headers: { 'Content-Type': 'application/json' },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setTeamId(data.data.teamId);
-      setTeamInput(data.data.teamId);
-      setJoinInput('');
-      Alert.alert('Time', 'Você entrou no time!');
+      await loadData();
+      setJoinCode('');
+      Alert.alert('Sucesso', `Você entrou em ${data.data.teamName}`);
     } catch (err: any) {
       Alert.alert('Erro', err.message);
     } finally {
-      setJoining(false);
+      setLoading(false);
     }
   };
 
+  const refreshInvite = async () => {
+    try {
+      const data = await apiFetch('/teams/refresh-invite', { method: 'POST' });
+      setTeam((prev: any) => prev ? { ...prev, inviteCode: data.data.inviteCode } : prev);
+      Alert.alert('Código renovado', data.data.inviteCode);
+    } catch (err: any) {
+      Alert.alert('Erro', err.message);
+    }
+  };
+
+  const removeMember = async (memberId: string, memberName: string) => {
+    Alert.alert('Remover', `Remover ${memberName} da equipe?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try {
+          await apiFetch(`/teams/members/${memberId}`, { method: 'DELETE' });
+          await loadData();
+        } catch (err: any) { Alert.alert('Erro', err.message); }
+      }},
+    ]);
+  };
+
   const copyInvite = () => {
-    if (inviteCode) {
-      navigator.clipboard?.writeText?.(inviteCode);
-      Alert.alert('Copiado', inviteCode);
+    if (team?.inviteCode) {
+      navigator.clipboard?.writeText?.(team.inviteCode);
+      Alert.alert('Copiado', team.inviteCode);
     }
   };
 
@@ -102,6 +119,8 @@ export default function SettingsTabScreen() {
     await AsyncStorage.removeItem('token');
     router.replace('/');
   };
+
+  const isAdmin = team?.myRole === 'admin';
 
   return (
     <PaperProvider>
@@ -135,78 +154,92 @@ export default function SettingsTabScreen() {
               <Users size={24} color={AppColors.green} />
             </View>
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Time</Text>
+              <Text style={styles.cardTitle}>Equipe</Text>
               <Text style={styles.cardDescription}>
-                {teamId ? `Time: ${teamId}` : 'Sem time'}
+                {team ? team.name : 'Nenhuma equipe'}
               </Text>
             </View>
           </Surface>
 
-          <Text style={styles.sectionLabel}>
-            {teamId ? 'Alterar time' : 'Criar time'}
-          </Text>
-          <TextInput
-            label="Nome do time"
-            value={teamInput}
-            onChangeText={setTeamInput}
-            mode="outlined"
-            style={styles.input}
-            outlineColor={AppColors.border}
-            activeOutlineColor={AppColors.green}
-            textColor={AppColors.text}
-            placeholder="Ex: equipe-01"
-            placeholderTextColor={AppColors.textMid}
-          />
-          <Button
-            mode="contained"
-            onPress={saveTeam}
-            loading={savingTeam}
-            buttonColor={AppColors.green}
-            style={styles.actionBtn}
-          >
-            {teamId ? 'Atualizar time' : 'Criar time'}
-          </Button>
+          {team ? (
+            <>
+              {isAdmin && team.inviteCode ? (
+                <Surface style={styles.inviteBox} elevation={1}>
+                  <Text style={styles.inviteLabel}>Código de convite</Text>
+                  <View style={styles.inviteRow}>
+                    <Text style={styles.inviteCode}>{team.inviteCode}</Text>
+                    <TouchableOpacity onPress={copyInvite} style={styles.iconBtn}>
+                      <Copy size={18} color={AppColors.green} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={refreshInvite} style={styles.iconBtn}>
+                      <RefreshCw size={18} color={AppColors.textMid} />
+                    </TouchableOpacity>
+                  </View>
+                </Surface>
+              ) : null}
 
-          {inviteCode ? (
-            <Surface style={styles.inviteBox} elevation={1}>
-              <Text style={styles.inviteLabel}>Código de convite</Text>
-              <View style={styles.inviteRow}>
-                <Text style={styles.inviteCode}>{inviteCode}</Text>
-                <TouchableOpacity onPress={copyInvite} style={styles.copyBtn}>
-                  <Copy size={18} color={AppColors.green} />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.inviteHint}>
-                Compartilhe este código com quem quiser adicionar ao time
-              </Text>
-            </Surface>
-          ) : null}
+              <Text style={styles.sectionTitle}>Membros</Text>
+              {team.members?.map((m: any) => (
+                <Surface key={m.id} style={styles.memberCard} elevation={1}>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{m.name}</Text>
+                    <Text style={styles.memberRole}>
+                      {m.role === 'admin' ? 'Administrador' : 'Membro'}
+                    </Text>
+                  </View>
+                  {isAdmin && m.role !== 'admin' && (
+                    <TouchableOpacity onPress={() => removeMember(m.id, m.name)}>
+                      <Trash2 size={18} color="#e57373" />
+                    </TouchableOpacity>
+                  )}
+                </Surface>
+              ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>Criar equipe</Text>
+              <TextInput
+                label="Nome da equipe"
+                value={teamName}
+                onChangeText={setTeamName}
+                mode="outlined"
+                style={styles.input}
+                outlineColor={AppColors.border}
+                activeOutlineColor={AppColors.green}
+                textColor={AppColors.text}
+                placeholder="Ex: Vendas Norte"
+                placeholderTextColor={AppColors.textMid}
+              />
+              <Button
+                mode="contained" onPress={createTeam} loading={loading}
+                buttonColor={AppColors.green} style={styles.actionBtn}
+                icon={() => <Users size={18} color="#fff" />}
+              >
+                Criar equipe
+              </Button>
 
-          <Text style={[styles.sectionLabel, { marginTop: 20 }]}>
-            Entrar em um time
-          </Text>
-          <TextInput
-            label="Código de convite"
-            value={joinInput}
-            onChangeText={setJoinInput}
-            mode="outlined"
-            style={styles.input}
-            outlineColor={AppColors.border}
-            activeOutlineColor={AppColors.green}
-            textColor={AppColors.text}
-            placeholder="Cole o código aqui"
-            placeholderTextColor={AppColors.textMid}
-          />
-          <Button
-            mode="contained"
-            onPress={joinTeam}
-            loading={joining}
-            buttonColor={AppColors.green}
-            style={styles.actionBtn}
-            icon={() => <LogIn size={18} color="#fff" />}
-          >
-            Entrar no time
-          </Button>
+              <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Entrar em uma equipe</Text>
+              <TextInput
+                label="Código de convite"
+                value={joinCode}
+                onChangeText={setJoinCode}
+                mode="outlined"
+                style={styles.input}
+                outlineColor={AppColors.border}
+                activeOutlineColor={AppColors.green}
+                textColor={AppColors.text}
+                placeholder="Ex: ABC1-DEF2"
+                placeholderTextColor={AppColors.textMid}
+              />
+              <Button
+                mode="contained" onPress={joinTeam} loading={loading}
+                buttonColor={AppColors.green} style={styles.actionBtn}
+                icon={() => <LogIn size={18} color="#fff" />}
+              >
+                Entrar
+              </Button>
+            </>
+          )}
 
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutText}>Sair</Text>
@@ -242,9 +275,7 @@ const styles = StyleSheet.create({
   cardContent: { flex: 1 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: AppColors.text, marginBottom: 2 },
   cardDescription: { fontSize: 13, color: AppColors.textMid },
-  sectionLabel: {
-    fontSize: 14, fontWeight: '600', color: AppColors.text, marginBottom: 8,
-  },
+  sectionTitle: { fontSize: 14, fontWeight: '600', color: AppColors.text, marginBottom: 8 },
   input: { backgroundColor: AppColors.inputBg, marginBottom: 10 },
   actionBtn: { borderRadius: 8, marginBottom: 16 },
   inviteBox: {
@@ -260,8 +291,14 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     letterSpacing: 2,
   },
-  copyBtn: { padding: 8 },
-  inviteHint: { fontSize: 12, color: AppColors.textMid, marginTop: 8 },
+  iconBtn: { padding: 8 },
+  memberCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: AppColors.card, borderRadius: 10, padding: 14, marginBottom: 8,
+  },
+  memberInfo: { flex: 1 },
+  memberName: { fontSize: 15, fontWeight: '600', color: AppColors.text },
+  memberRole: { fontSize: 12, color: AppColors.textMid, marginTop: 2 },
   logoutButton: { alignItems: 'center', paddingVertical: 16, marginTop: 20 },
   logoutText: { color: '#e57373', fontSize: 16, fontWeight: '600' },
 });

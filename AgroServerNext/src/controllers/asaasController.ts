@@ -7,6 +7,15 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const refreshProgress = new Map<string, { total: number; current: number }>();
 
+async function getTeamUserIds(userId: string): Promise<string[]> {
+  const membership = await prisma.teamMember.findFirst({
+    where: { userId },
+    include: { team: { include: { members: { select: { userId: true } } } } },
+  });
+  if (!membership) return [];
+  return membership.team.members.map(m => m.userId);
+}
+
 export function getRefreshProgress(routeId: string) {
   return refreshProgress.get(`route-${routeId}`) || null;
 }
@@ -52,10 +61,8 @@ export const asaasController = {
         return res.status(404).json({ status: 'error', message: 'Rota não encontrada' });
       }
 
-      const userId = req.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
-      const canAccess = route.userId === userId || (user?.teamId && route.teamId === user.teamId);
-      if (!canAccess) throw new AppError('Acesso negado', 403);
+      const teamUserIds = await getTeamUserIds(req.userId!);
+      if (![...teamUserIds, req.userId!].includes(route.userId || '')) throw new AppError('Acesso negado', 403);
 
       const routePayments = await prisma.routePayment.findMany({
         where: { routeId: id },
