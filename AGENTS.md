@@ -146,3 +146,5 @@ Usuário pode cadastrar múltiplas chaves Asaas no frontend (Config > Chaves da 
 ### Times (compartilhamento de rotas)
 
 Usuários podem definir um `teamId` em Config > Time. Usuários com o mesmo `teamId` enxergam as rotas uns dos outros. Sem time, o usuário vê apenas as próprias rotas.
+
+Ao definir um time, um código de convite único é gerado. Outros usuários entram no time usando esse código (`POST /auth/team/join`). O código é visível apenas para quem criou o time (`GET /auth/team/invite`).

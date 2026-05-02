@@ -10,5 +10,7 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/profile', auth, authController.getProfile);
 router.patch('/team', auth, authController.updateTeam);
+router.post('/team/join', auth, authController.joinTeam);
+router.get('/team/invite', auth, authController.getTeamInvite);
 
 export default router;
