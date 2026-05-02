@@ -23,6 +23,7 @@ export default function CreateRouteScreen() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [createdBy, setCreatedBy] = React.useState('');
+  const [myId, setMyId] = React.useState('');
   const [sellers, setSellers] = React.useState<{id: string; name: string}[]>([]);
   const [selectedSeller, setSelectedSeller] = React.useState<{id: string; name: string} | null>(null);
   const [sellerModalVisible, setSellerModalVisible] = React.useState(false);
@@ -42,8 +43,11 @@ export default function CreateRouteScreen() {
         ]);
         const profile = await profileRes.json();
         if (profile.data?.name) setCreatedBy(profile.data.name);
+        if (profile.data?.id) setMyId(profile.data.id);
         const sellersData = await sellersRes.json();
-        if (sellersData.data) setSellers(sellersData.data);
+        if (sellersData.data) {
+          setSellers(sellersData.data.filter((s: any) => s.id !== profile.data?.id));
+        }
       } catch (_) {}
     })();
   }, []);
@@ -162,66 +166,82 @@ export default function CreateRouteScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.dropdownTrigger}
-              onPress={() => setSellerModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.dropdownContent}>
-                <View style={styles.sellerAvatar}>
-                  <User size={18} color={GREEN_MAIN} />
-                </View>
-                <View style={styles.sellerInfo}>
-                  <Text style={styles.sellerName}>
-                    {selectedSeller ? selectedSeller.name : (createdBy ? `Criado por ${createdBy}` : 'Carregando...')}
-                  </Text>
-                  <Text style={styles.sellerEmail}>
-                    {selectedSeller ? 'Vendedor' : 'Você é o dono da rota'}
-                  </Text>
-                </View>
-                <ChevronDown size={20} color={TEXT_MID} />
+            <View style={styles.adminRow}>
+              <View style={styles.sellerAvatar}>
+                <RouteIcon size={18} color={GREEN_MAIN} />
               </View>
-            </TouchableOpacity>
+              <View style={styles.sellerInfo}>
+                <Text style={styles.sellerName}>
+                  {createdBy || 'Carregando...'}
+                </Text>
+                <Text style={styles.sellerEmail}>Administrador</Text>
+              </View>
+            </View>
 
-            <Modal
-              visible={sellerModalVisible}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setSellerModalVisible(false)}
-            >
-              <TouchableOpacity
-                style={styles.modalOverlay}
-                activeOpacity={1}
-                onPress={() => setSellerModalVisible(false)}
-              >
-                <Surface style={styles.dropdownModal} elevation={5}>
-                  <Text style={styles.modalTitle}>Selecionar Vendedor</Text>
-                  <ScrollView style={styles.sellerList} nestedScrollEnabled>
-                    {sellers.map((seller) => (
-                      <TouchableOpacity
-                        key={seller.id}
-                        style={[
-                          styles.sellerItem,
-                          selectedSeller?.id === seller.id && styles.sellerItemSelected,
-                        ]}
-                        onPress={() => {
-                          setSelectedSeller(
-                            selectedSeller?.id === seller.id ? null : seller
-                          );
-                          setSellerModalVisible(false);
-                        }}
-                      >
-                        <User size={20} color={GREEN_MAIN} />
-                        <Text style={styles.sellerItemName}>{seller.name}</Text>
-                        {selectedSeller?.id === seller.id && (
-                          <Check size={18} color={GREEN_MAIN} />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </Surface>
-              </TouchableOpacity>
-            </Modal>
+            {sellers.length > 0 && (
+              <>
+                <TouchableOpacity
+                  style={styles.dropdownTrigger}
+                  onPress={() => setSellerModalVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.dropdownContent}>
+                    <View style={styles.sellerAvatar}>
+                      <User size={18} color={GREEN_MAIN} />
+                    </View>
+                    <View style={styles.sellerInfo}>
+                      <Text style={styles.sellerName}>
+                        {selectedSeller ? selectedSeller.name : 'Selecione um vendedor'}
+                      </Text>
+                      <Text style={styles.sellerEmail}>
+                        {selectedSeller ? 'Vendedor' : 'Opcional'}
+                      </Text>
+                    </View>
+                    <ChevronDown size={20} color={TEXT_MID} />
+                  </View>
+                </TouchableOpacity>
+
+                <Modal
+                  visible={sellerModalVisible}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setSellerModalVisible(false)}
+                >
+                  <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setSellerModalVisible(false)}
+                  >
+                    <Surface style={styles.dropdownModal} elevation={5}>
+                      <Text style={styles.modalTitle}>Selecionar Vendedor</Text>
+                      <ScrollView style={styles.sellerList} nestedScrollEnabled>
+                        {sellers.map((seller) => (
+                          <TouchableOpacity
+                            key={seller.id}
+                            style={[
+                              styles.sellerItem,
+                              selectedSeller?.id === seller.id && styles.sellerItemSelected,
+                            ]}
+                            onPress={() => {
+                              setSelectedSeller(
+                                selectedSeller?.id === seller.id ? null : seller
+                              );
+                              setSellerModalVisible(false);
+                            }}
+                          >
+                            <User size={20} color={GREEN_MAIN} />
+                            <Text style={styles.sellerItemName}>{seller.name}</Text>
+                            {selectedSeller?.id === seller.id && (
+                              <Check size={18} color={GREEN_MAIN} />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </Surface>
+                  </TouchableOpacity>
+                </Modal>
+              </>
+            )}
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -319,6 +339,15 @@ const styles = StyleSheet.create({
   },
   halfInput: {
     flex: 1,
+  },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: INPUT_BG,
+    borderRadius: 12,
+    marginBottom: 14,
   },
   dropdownTrigger: {
     borderWidth: 1,

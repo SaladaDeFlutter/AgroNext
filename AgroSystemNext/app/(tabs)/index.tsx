@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { StyleSheet, View, Platform, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Surface, Provider as PaperProvider } from 'react-native-paper';
+import { StyleSheet, View, Platform, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import { Text, Surface, Provider as PaperProvider, TextInput, Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { Leaf, FileText, LogOut, Route as RouteIcon } from 'lucide-react-native';
+import { Leaf, FileText, LogOut, Route as RouteIcon, UserPlus } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '@/src/config/api';
+import { api, getFullHeaders } from '@/src/config/api';
 import { AppColors } from '@/constants/theme';
 
 const GREEN_MAIN = AppColors.green;
@@ -14,6 +14,11 @@ const CARD_DARK = AppColors.card;
 export default function HomeScreen() {
   const router = useRouter();
   const [userName, setUserName] = React.useState('');
+  const [registerVisible, setRegisterVisible] = React.useState(false);
+  const [regName, setRegName] = React.useState('');
+  const [regEmail, setRegEmail] = React.useState('');
+  const [regPass, setRegPass] = React.useState('');
+  const [regLoading, setRegLoading] = React.useState(false);
 
   React.useEffect(() => {
     const loadUser = async () => {
@@ -31,6 +36,31 @@ export default function HomeScreen() {
     };
     loadUser();
   }, []);
+
+  const registerSeller = async () => {
+    if (!regName.trim() || !regEmail.trim() || !regPass.trim()) {
+      return Alert.alert('Erro', 'Preencha todos os campos');
+    }
+    setRegLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = await getFullHeaders(token || undefined);
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/register`, {
+        method: 'POST', headers, body: JSON.stringify({
+          name: regName.trim(), email: regEmail.trim(), password: regPass,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Erro ao cadastrar');
+      Alert.alert('Sucesso', `${regName.trim()} cadastrado como vendedor`);
+      setRegisterVisible(false);
+      setRegName(''); setRegEmail(''); setRegPass('');
+    } catch (err: any) {
+      Alert.alert('Erro', err.message);
+    } finally {
+      setRegLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
@@ -79,7 +109,53 @@ export default function HomeScreen() {
               </View>
             </Surface>
           </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setRegisterVisible(true)}>
+            <Surface style={styles.card} elevation={2}>
+              <View style={[styles.cardIcon, { backgroundColor: '#1a2a3a' }]}>
+                <UserPlus size={28} color={GREEN_MAIN} />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardTitle}>Cadastrar Vendedor</Text>
+                <Text style={styles.cardDescription}>
+                  Adicione um novo vendedor ao sistema
+                </Text>
+              </View>
+            </Surface>
+          </TouchableOpacity>
         </ScrollView>
+
+        <Modal visible={registerVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <Surface style={styles.modalContent} elevation={5}>
+              <Text style={styles.modalTitle}>Cadastrar Vendedor</Text>
+
+              <TextInput label="Nome" value={regName} onChangeText={setRegName}
+                mode="outlined" style={styles.modalInput}
+                outlineColor={AppColors.border} activeOutlineColor={AppColors.green}
+                textColor={AppColors.text} />
+
+              <TextInput label="Email" value={regEmail} onChangeText={setRegEmail}
+                autoCapitalize="none" mode="outlined" style={styles.modalInput}
+                outlineColor={AppColors.border} activeOutlineColor={AppColors.green}
+                textColor={AppColors.text} />
+
+              <TextInput label="Senha" value={regPass} onChangeText={setRegPass}
+                secureTextEntry mode="outlined" style={styles.modalInput}
+                outlineColor={AppColors.border} activeOutlineColor={AppColors.green}
+                textColor={AppColors.text} />
+
+              <Button mode="contained" onPress={registerSeller} loading={regLoading}
+                buttonColor={AppColors.green} style={styles.modalBtn}>
+                Cadastrar
+              </Button>
+              <Button mode="text" onPress={() => setRegisterVisible(false)}
+                textColor={AppColors.textMid}>
+                Cancelar
+              </Button>
+            </Surface>
+          </View>
+        </Modal>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color="#e57373" />
@@ -172,5 +248,21 @@ const styles = StyleSheet.create({
     color: '#e57373',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center', padding: 24,
+  },
+  modalContent: {
+    backgroundColor: AppColors.card, borderRadius: 16, padding: 24,
+  },
+  modalTitle: {
+    fontSize: 20, fontWeight: 'bold', color: AppColors.text, marginBottom: 20, textAlign: 'center',
+  },
+  modalInput: {
+    backgroundColor: AppColors.inputBg, marginBottom: 12,
+  },
+  modalBtn: {
+    borderRadius: 8, marginTop: 8,
   },
 });
