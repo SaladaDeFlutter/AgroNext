@@ -142,4 +142,7 @@ Usuário pode cadastrar múltiplas chaves Asaas no frontend (Config > Chaves da 
 - O frontend envia `asaas-token` header com todas as chaves ativas (separadas por `,`)
 - O backend tenta cada chave até uma funcionar (itera e captura exceções)
 - `asaas-token` não precisa ser enviado para rotas `/api/auth/*`
-- `asaas-token` não precisa ser enviado para rotas `/api/auth/*`
+
+### Times (compartilhamento de rotas)
+
+Usuários podem definir um `teamId` em Config > Time. Usuários com o mesmo `teamId` enxergam as rotas uns dos outros. Sem time, o usuário vê apenas as próprias rotas.
