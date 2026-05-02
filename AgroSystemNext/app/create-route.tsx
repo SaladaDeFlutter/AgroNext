@@ -20,6 +20,8 @@ export default function CreateRouteScreen() {
   const [name, setName] = React.useState('');
   const [month, setMonth] = React.useState('');
   const [year, setYear] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
   const [createdBy, setCreatedBy] = React.useState('');
 
   React.useEffect(() => {
