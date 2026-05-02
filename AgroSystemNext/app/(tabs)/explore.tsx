@@ -121,7 +121,11 @@ export default function SettingsTabScreen() {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
-    router.replace('/');
+    if (Platform.OS === 'web') {
+      window.location.href = '/';
+    } else {
+      router.replace('/');
+    }
   };
 
   const isAdmin = team?.myRole === 'admin';

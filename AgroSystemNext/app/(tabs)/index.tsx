@@ -64,7 +64,11 @@ export default function HomeScreen() {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
-    router.replace('/');
+    if (Platform.OS === 'web') {
+      window.location.href = '/';
+    } else {
+      router.replace('/');
+    }
   };
 
   return (
