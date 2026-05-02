@@ -29,7 +29,11 @@ export default function SettingsTabScreen() {
   }, []);
 
   const apiFetch = async (path: string, opts?: RequestInit) => {
-    const res = await fetch(`${API}${path}`, { headers: await headers(), ...opts });
+    const baseHeaders = await headers();
+    const mergedHeaders = opts?.headers
+      ? { ...baseHeaders, ...(opts.headers as Record<string, string>) }
+      : baseHeaders;
+    const res = await fetch(`${API}${path}`, { ...opts, headers: mergedHeaders });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     return data;
