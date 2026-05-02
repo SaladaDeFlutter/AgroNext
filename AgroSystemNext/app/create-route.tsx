@@ -152,23 +152,17 @@ export default function CreateRouteScreen() {
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={styles.dropdownTrigger}
-              onPress={() => setMenuVisible(true)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.dropdownContent}>
-                <View style={styles.sellerAvatar}>
-                  <RouteIcon size={18} color={GREEN_MAIN} />
-                </View>
-                <View style={styles.sellerInfo}>
-                  <Text style={styles.sellerName}>
-                    {createdBy ? `Criado por ${createdBy}` : 'Carregando...'}
-                  </Text>
-                  <Text style={styles.sellerEmail}>Compartilhada com seu time</Text>
-                </View>
+            <View style={styles.dropdownContent}>
+              <View style={styles.sellerAvatar}>
+                <RouteIcon size={18} color={GREEN_MAIN} />
               </View>
-            </TouchableOpacity>
+              <View style={styles.sellerInfo}>
+                <Text style={styles.sellerName}>
+                  {createdBy ? `Criado por ${createdBy}` : 'Carregando...'}
+                </Text>
+                <Text style={styles.sellerEmail}>Compartilhada com seu time</Text>
+              </View>
+            </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
