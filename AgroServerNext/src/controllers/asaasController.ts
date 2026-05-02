@@ -114,7 +114,12 @@ export const asaasController = {
 
       const progressKey = `route-${id}`;
       const uniqueAsaasCustomerIds = [...new Set(dbClients.map(c => c.asaasId))];
-      refreshProgress.set(progressKey, { total: uniqueAsaasCustomerIds.length, current: 0 });
+      const paymentCountPerClient = new Map<string, number>();
+      for (const rp of routePayments) {
+        const cid = rp.payment.clientId;
+        if (cid) paymentCountPerClient.set(cid, (paymentCountPerClient.get(cid) || 0) + 1);
+      }
+      refreshProgress.set(progressKey, { total: routePayments.length, current: 0 });
 
       const uniquePayments: AsaasPaymentData[] = [];
       const installmentGroups: Record<string, InstallmentGroup> = {};
@@ -134,6 +139,7 @@ export const asaasController = {
       }) : [];
       const clientAsaasMap = new Map(dbClients.map(c => [c.id, c]));
       const asaasNameMap = new Map(dbClients.map(c => [c.asaasId, c.name]));
+      const asaasToClientId = new Map(dbClients.map(c => [c.asaasId, c.id]));
 
       // Build a local fallback map keyed by asaasId
       const localPaymentMap = new Map<string, typeof routePayments[0]['payment']>();
@@ -174,7 +180,10 @@ export const asaasController = {
           } as AsaasCustomer);
         }
         const prog = refreshProgress.get(progressKey);
-        if (prog) prog.current++;
+        if (prog) {
+          const cid = asaasToClientId.get(asaasCustomerId);
+          prog.current += paymentCountPerClient.get(cid || '') || 1;
+        }
       }
 
       // Fetch installments — try each token
