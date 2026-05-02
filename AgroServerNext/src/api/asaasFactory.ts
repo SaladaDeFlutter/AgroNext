@@ -1,6 +1,5 @@
 import { Request } from 'express';
 import { AsaasClient } from './asaasClient.js';
-import { config } from '../config/index.js';
 
 function parseTokens(value: string | string[] | undefined): string[] {
   if (!value) return [];
@@ -13,16 +12,10 @@ function parseTokens(value: string | string[] | undefined): string[] {
 
 export function getAsaasClients(req: Request): AsaasClient[] {
   const tokens = parseTokens(req.headers['asaas-token']);
-  const fallback = config.asaasAccessToken;
-
-  if (tokens.length === 0 && fallback) {
-    return [new AsaasClient(fallback)];
-  }
-
   return tokens.map(token => new AsaasClient(token));
 }
 
-export function getFirstAsaasClient(req: Request): AsaasClient {
+export function getFirstAsaasClient(req: Request): AsaasClient | null {
   const clients = getAsaasClients(req);
-  return clients[0] || new AsaasClient(config.asaasAccessToken);
+  return clients[0] || null;
 }

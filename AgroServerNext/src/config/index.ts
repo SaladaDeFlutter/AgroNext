@@ -13,5 +13,4 @@ export const config = {
   smtpSecure: process.env.SMTP_SECURE === 'true',
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
-  asaasAccessToken: process.env.ASAAS_ACCESS_TOKEN || '',
 };

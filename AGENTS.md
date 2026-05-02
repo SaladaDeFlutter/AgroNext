@@ -108,7 +108,6 @@ Todas as rotas **exceto** `/api/auth/*` exigem header `Authorization: Bearer <to
 **Backend (`.env` em `AgroServerNext/`):**
 ```
 DATABASE_URL="postgresql://agrouser@localhost:5432/AgroDB?schema=public"
-ASAAS_ACCESS_TOKEN=$aact_...
 JWT_SECRET=...
 JWT_EXPIRES_IN=7d
 PORT=3000
@@ -143,4 +142,4 @@ Usuário pode cadastrar múltiplas chaves Asaas no frontend (Config > Chaves da 
 - O frontend envia `asaas-token` header com todas as chaves ativas (separadas por `,`)
 - O backend tenta cada chave até uma funcionar (itera e captura exceções)
 - `asaas-token` não precisa ser enviado para rotas `/api/auth/*`
-- O token de config `.env` ainda funciona como fallback se nenhum header for enviado
+- `asaas-token` não precisa ser enviado para rotas `/api/auth/*`

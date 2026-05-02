@@ -278,6 +278,7 @@ export const asaasController = {
     try {
       const { routeId, paymentAsaasId, fichaNumber } = req.body;
       const asaas = getFirstAsaasClient(req);
+      if (!asaas) return res.status(400).json({ status: 'error', message: 'Nenhuma chave da API configurada. Adicione em Config > Chaves da API.' });
 
       const route = await prisma.route.findUnique({ where: { id: routeId } });
       if (!route) {
@@ -369,6 +370,7 @@ export const asaasController = {
     try {
       const { routeId, installmentAsaasId, fichaNumber } = req.body;
       const asaas = getFirstAsaasClient(req);
+      if (!asaas) return res.status(400).json({ status: 'error', message: 'Nenhuma chave da API configurada. Adicione em Config > Chaves da API.' });
 
       const route = await prisma.route.findUnique({ where: { id: routeId } });
       if (!route) {
