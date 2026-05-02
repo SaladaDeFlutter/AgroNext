@@ -17,9 +17,7 @@ async function getTeamUserIds(userId: string): Promise<string[]> {
 }
 
 export function getRefreshProgress(routeId: string) {
-  const p = refreshProgress.get(`route-${routeId}`);
-  if (p) console.log(`[PROGRESS] poll: ${p.current}/${p.total}`);
-  return p || null;
+  return refreshProgress.get(`route-${routeId}`) || null;
 }
 
 interface RoutePaymentData {
@@ -55,9 +53,8 @@ interface InstallmentGroup {
 
 export const asaasController = {
   async getRouteAsaasData(req: AuthRequest, res: Response, next: NextFunction) {
+    const { id } = req.params;
     try {
-      const { id } = req.params;
-
       const route = await prisma.route.findUnique({ where: { id } });
       if (!route) {
         return res.status(404).json({ status: 'error', message: 'Rota não encontrada' });
@@ -122,7 +119,6 @@ export const asaasController = {
         if (cid) paymentCountPerClient.set(cid, (paymentCountPerClient.get(cid) || 0) + 1);
       }
       refreshProgress.set(progressKey, { total: routePayments.length, current: 0 });
-      console.log(`[PROGRESS] iniciado: 0/${routePayments.length}`);
 
       const uniquePayments: AsaasPaymentData[] = [];
       const installmentGroups: Record<string, InstallmentGroup> = {};
@@ -185,9 +181,7 @@ export const asaasController = {
         const prog = refreshProgress.get(progressKey);
         if (prog) {
           const cid = asaasToClientId.get(asaasCustomerId);
-          const increment = paymentCountPerClient.get(cid || '') || 1;
-          prog.current += increment;
-          console.log(`[PROGRESS] ${asaasCustomerId}: +${increment} = ${prog.current}/${prog.total}`);
+          prog.current += paymentCountPerClient.get(cid || '') || 1;
         }
       }
 
