@@ -16,10 +16,11 @@ async function getTeamUserIds(userId: string): Promise<string[]> {
 export const routeController = {
   async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { name, description, month, year } = req.body;
+      const { name, description, month, year, sellerId } = req.body;
       const result = await routeService.create({
         name, description, month, year,
         userId: req.userId!,
+        sellerId: sellerId || undefined,
       });
       res.status(201).json({ status: 'success', data: result });
     } catch (error) {

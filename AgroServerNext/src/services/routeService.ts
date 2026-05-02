@@ -3,7 +3,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { Prisma } from '@prisma/client';
 
 export const routeService = {
-  async create(data: { name: string; description?: string; month: number; year: number; userId?: string; teamId?: string }) {
+  async create(data: { name: string; description?: string; month: number; year: number; userId?: string; sellerId?: string }) {
     const route = await prisma.route.create({
       data: {
         name: data.name,
@@ -11,7 +11,7 @@ export const routeService = {
         month: data.month,
         year: data.year,
         userId: data.userId,
-        teamId: data.teamId,
+        sellerId: data.sellerId,
       },
       include: {
         user: {
@@ -32,6 +32,9 @@ export const routeService = {
         user: {
           select: { id: true, name: true, email: true }
         },
+        seller: {
+          select: { id: true, name: true, email: true }
+        },
         _count: {
           select: { payments: true }
         }
@@ -45,6 +48,9 @@ export const routeService = {
       where: { id },
       include: {
         user: {
+          select: { id: true, name: true, email: true }
+        },
+        seller: {
           select: { id: true, name: true, email: true }
         },
         payments: {

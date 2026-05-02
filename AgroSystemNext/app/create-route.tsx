@@ -2,7 +2,7 @@ import * as React from 'react';
 import { StyleSheet, View, Platform, Pressable, ScrollView, Modal, TouchableOpacity, Animated } from 'react-native';
 import { TextInput, Button, Text, Surface, Provider as PaperProvider } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Route as RouteIcon } from 'lucide-react-native';
+import { ArrowLeft, Route as RouteIcon, User, Check, ChevronDown } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFullHeaders } from '@/src/config/api';
 import { AppColors } from '@/constants/theme';
@@ -23,19 +23,28 @@ export default function CreateRouteScreen() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [createdBy, setCreatedBy] = React.useState('');
+  const [sellers, setSellers] = React.useState<{id: string; name: string}[]>([]);
+  const [selectedSeller, setSelectedSeller] = React.useState<{id: string; name: string} | null>(null);
+  const [sellerModalVisible, setSellerModalVisible] = React.useState(false);
 
   React.useEffect(() => {
     (async () => {
       const token = await AsyncStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/profile`, {
+      if (!token) return;
+      try {
+        const [profileRes, sellersRes] = await Promise.all([
+          fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/profile`, {
             headers: await getFullHeaders(token),
-          });
-          const data = await response.json();
-          if (data.data?.name) setCreatedBy(data.data.name);
-        } catch (_) {}
-      }
+          }),
+          fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/sellers`, {
+            headers: await getFullHeaders(token),
+          }),
+        ]);
+        const profile = await profileRes.json();
+        if (profile.data?.name) setCreatedBy(profile.data.name);
+        const sellersData = await sellersRes.json();
+        if (sellersData.data) setSellers(sellersData.data);
+      } catch (_) {}
     })();
   }, []);
 
@@ -66,6 +75,7 @@ export default function CreateRouteScreen() {
           name,
           month: parseInt(month),
           year: parseInt(year),
+          sellerId: selectedSeller?.id || null,
         }),
       });
 
@@ -152,17 +162,66 @@ export default function CreateRouteScreen() {
               </View>
             </View>
 
-            <View style={styles.dropdownContent}>
-              <View style={styles.sellerAvatar}>
-                <RouteIcon size={18} color={GREEN_MAIN} />
+            <TouchableOpacity
+              style={styles.dropdownTrigger}
+              onPress={() => setSellerModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.dropdownContent}>
+                <View style={styles.sellerAvatar}>
+                  <User size={18} color={GREEN_MAIN} />
+                </View>
+                <View style={styles.sellerInfo}>
+                  <Text style={styles.sellerName}>
+                    {selectedSeller ? selectedSeller.name : (createdBy ? `Criado por ${createdBy}` : 'Carregando...')}
+                  </Text>
+                  <Text style={styles.sellerEmail}>
+                    {selectedSeller ? 'Vendedor' : 'Você é o dono da rota'}
+                  </Text>
+                </View>
+                <ChevronDown size={20} color={TEXT_MID} />
               </View>
-              <View style={styles.sellerInfo}>
-                <Text style={styles.sellerName}>
-                  {createdBy ? `Criado por ${createdBy}` : 'Carregando...'}
-                </Text>
-                <Text style={styles.sellerEmail}>Compartilhada com seu time</Text>
-              </View>
-            </View>
+            </TouchableOpacity>
+
+            <Modal
+              visible={sellerModalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setSellerModalVisible(false)}
+            >
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setSellerModalVisible(false)}
+              >
+                <Surface style={styles.dropdownModal} elevation={5}>
+                  <Text style={styles.modalTitle}>Selecionar Vendedor</Text>
+                  <ScrollView style={styles.sellerList} nestedScrollEnabled>
+                    {sellers.map((seller) => (
+                      <TouchableOpacity
+                        key={seller.id}
+                        style={[
+                          styles.sellerItem,
+                          selectedSeller?.id === seller.id && styles.sellerItemSelected,
+                        ]}
+                        onPress={() => {
+                          setSelectedSeller(
+                            selectedSeller?.id === seller.id ? null : seller
+                          );
+                          setSellerModalVisible(false);
+                        }}
+                      >
+                        <User size={20} color={GREEN_MAIN} />
+                        <Text style={styles.sellerItemName}>{seller.name}</Text>
+                        {selectedSeller?.id === seller.id && (
+                          <Check size={18} color={GREEN_MAIN} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </Surface>
+              </TouchableOpacity>
+            </Modal>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
