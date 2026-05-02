@@ -9,5 +9,6 @@ router.post('/resend-verification', authController.resendVerificationCode);
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/profile', auth, authController.getProfile);
+router.patch('/team', auth, authController.updateTeam);
 
 export default router;

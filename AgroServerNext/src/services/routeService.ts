@@ -1,8 +1,9 @@
 import prisma from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { Prisma } from '@prisma/client';
 
 export const routeService = {
-  async create(data: { name: string; description?: string; month: number; year: number; userId?: string }) {
+  async create(data: { name: string; description?: string; month: number; year: number; userId?: string; teamId?: string }) {
     const route = await prisma.route.create({
       data: {
         name: data.name,
@@ -10,6 +11,7 @@ export const routeService = {
         month: data.month,
         year: data.year,
         userId: data.userId,
+        teamId: data.teamId,
       },
       include: {
         user: {
@@ -23,8 +25,9 @@ export const routeService = {
     return route;
   },
 
-  async findAll() {
+  async findAll(where?: Prisma.RouteWhereInput) {
     return prisma.route.findMany({
+      where,
       include: {
         user: {
           select: { id: true, name: true, email: true }

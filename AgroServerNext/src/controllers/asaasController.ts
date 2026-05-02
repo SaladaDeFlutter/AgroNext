@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { AsaasClient, AsaasPayment, AsaasCustomer, AsaasInstallment } from '../api/asaasClient.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { getAsaasClients, getFirstAsaasClient } from '../api/asaasFactory.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 const refreshProgress = new Map<string, { total: number; current: number }>();
 
@@ -50,6 +51,11 @@ export const asaasController = {
       if (!route) {
         return res.status(404).json({ status: 'error', message: 'Rota não encontrada' });
       }
+
+      const userId = req.userId!;
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
+      const canAccess = route.userId === userId || (user?.teamId && route.teamId === user.teamId);
+      if (!canAccess) throw new AppError('Acesso negado', 403);
 
       const routePayments = await prisma.routePayment.findMany({
         where: { routeId: id },
@@ -285,6 +291,11 @@ export const asaasController = {
         return res.status(404).json({ status: 'error', message: 'Rota não encontrada' });
       }
 
+      const userId = req.userId!;
+      const userData = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
+      const canAccess = route.userId === userId || (userData?.teamId && route.teamId === userData.teamId);
+      if (!canAccess) throw new AppError('Acesso negado', 403);
+
       const payment = await asaas.getPayment(paymentAsaasId);
       
       let client = await prisma.client.findFirst({
@@ -376,6 +387,11 @@ export const asaasController = {
       if (!route) {
         return res.status(404).json({ status: 'error', message: 'Rota não encontrada' });
       }
+
+      const userId = req.userId!;
+      const userData = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
+      const canAccess = route.userId === userId || (userData?.teamId && route.teamId === userData.teamId);
+      if (!canAccess) throw new AppError('Acesso negado', 403);
 
       const installmentPayments = await asaas.getInstallmentPayments(installmentAsaasId);
       
@@ -487,6 +503,11 @@ export const asaasController = {
       if (!route) {
         return res.status(404).json({ status: 'error', message: 'Rota não encontrada' });
       }
+
+      const userId = req.userId!;
+      const userData = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
+      const canAccess = route.userId === userId || (userData?.teamId && route.teamId === userData.teamId);
+      if (!canAccess) throw new AppError('Acesso negado', 403);
 
       const dbPayment = await prisma.payment.findFirst({
         where: { asaasId: paymentId }

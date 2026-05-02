@@ -2,52 +2,40 @@ import * as React from 'react';
 import { StyleSheet, View, Platform, Pressable, ScrollView, Modal, TouchableOpacity, Animated } from 'react-native';
 import { TextInput, Button, Text, Surface, Provider as PaperProvider } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Route as RouteIcon, ChevronDown, User, Check } from 'lucide-react-native';
+import { ArrowLeft, Route as RouteIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getFullHeaders } from '@/src/config/api';
+import { AppColors } from '@/constants/theme';
 
-const GREEN_MAIN = '#15B86A';
-const BG_DARK = '#0d0d0d';
-const CARD_DARK = '#1f1f1f';
-const INPUT_BG = '#2a2a2a';
-const TEXT_LIGHT = '#f0f0f0';
-const TEXT_MID = '#a0a0a0';
-const BORDER_GREY = '#404040';
-
-interface Seller {
-  id: string;
-  name: string;
-  email: string;
-}
+const GREEN_MAIN = AppColors.green;
+const BG_DARK = AppColors.bg;
+const CARD_DARK = AppColors.card;
+const INPUT_BG = AppColors.inputBg;
+const TEXT_LIGHT = AppColors.text;
+const TEXT_MID = AppColors.textMid;
+const BORDER_GREY = AppColors.border;
 
 export default function CreateRouteScreen() {
   const router = useRouter();
   const [name, setName] = React.useState('');
   const [month, setMonth] = React.useState('');
   const [year, setYear] = React.useState('');
-  const [selectedSeller, setSelectedSeller] = React.useState<Seller | null>(null);
-  const [sellers, setSellers] = React.useState<Seller[]>([]);
-  const [menuVisible, setMenuVisible] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState('');
+  const [createdBy, setCreatedBy] = React.useState('');
 
   React.useEffect(() => {
-    loadSellers();
-  }, []);
-
-  const loadSellers = async () => {
-    try {
+    (async () => {
       const token = await AsyncStorage.getItem('token');
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${apiUrl}/users/sellers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      console.log('Sellers response:', data);
-      setSellers(data.data || []);
-    } catch (err) {
-      console.error('Error loading sellers:', err);
-    }
-  };
+      if (token) {
+        try {
+          const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/profile`, {
+            headers: await getFullHeaders(token),
+          });
+          const data = await response.json();
+          if (data.data?.name) setCreatedBy(data.data.name);
+        } catch (_) {}
+      }
+    })();
+  }, []);
 
   const handleCreate = async () => {
     setError('');
@@ -64,11 +52,6 @@ export default function CreateRouteScreen() {
       setError('Ano inválido (4 dígitos).');
       return;
     }
-    if (!selectedSeller) {
-      setError('Selecione um vendedor.');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -76,15 +59,11 @@ export default function CreateRouteScreen() {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: await getFullHeaders(token || undefined),
         body: JSON.stringify({
           name,
           month: parseInt(month),
           year: parseInt(year),
-          userId: selectedSeller.id,
         }),
       });
 
@@ -177,81 +156,17 @@ export default function CreateRouteScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.dropdownContent}>
-                {selectedSeller ? (
-                  <>
-                    <View style={styles.sellerAvatar}>
-                      <User size={18} color={GREEN_MAIN} />
-                    </View>
-                    <View style={styles.sellerInfo}>
-                      <Text style={styles.sellerName}>{selectedSeller.name}</Text>
-                      <Text style={styles.sellerEmail}>{selectedSeller.email}</Text>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <User size={20} color={TEXT_MID} />
-                    <Text style={styles.dropdownPlaceholder}>Selecione um vendedor</Text>
-                  </>
-                )}
-                <ChevronDown size={20} color={TEXT_MID} />
+                <View style={styles.sellerAvatar}>
+                  <RouteIcon size={18} color={GREEN_MAIN} />
+                </View>
+                <View style={styles.sellerInfo}>
+                  <Text style={styles.sellerName}>
+                    {createdBy ? `Criado por ${createdBy}` : 'Carregando...'}
+                  </Text>
+                  <Text style={styles.sellerEmail}>Compartilhada com seu time</Text>
+                </View>
               </View>
             </TouchableOpacity>
-
-            <Modal
-              visible={menuVisible}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setMenuVisible(false)}
-            >
-              <TouchableOpacity 
-                style={styles.modalOverlay}
-                activeOpacity={1}
-                onPress={() => setMenuVisible(false)}
-              >
-                <Surface style={styles.dropdownModal} elevation={5}>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Selecionar Vendedor</Text>
-                    <Text style={styles.modalSubtitle}>
-                      {sellers.length} vendedor(es) disponível(is)
-                    </Text>
-                  </View>
-                  <ScrollView style={styles.sellerList} nestedScrollEnabled>
-                    {sellers.map((seller) => (
-                      <TouchableOpacity
-                        key={seller.id}
-                        style={[
-                          styles.sellerItem,
-                          selectedSeller?.id === seller.id && styles.sellerItemSelected
-                        ]}
-                        onPress={() => {
-                          setSelectedSeller(seller);
-                          setMenuVisible(false);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.sellerItemAvatar}>
-                          <User size={20} color={GREEN_MAIN} />
-                        </View>
-                        <View style={styles.sellerItemInfo}>
-                          <Text style={styles.sellerItemName}>{seller.name}</Text>
-                          <Text style={styles.sellerItemEmail}>{seller.email}</Text>
-                        </View>
-                        {selectedSeller?.id === seller.id && (
-                          <View style={styles.checkIcon}>
-                            <Check size={18} color={GREEN_MAIN} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                    {sellers.length === 0 && (
-                      <View style={styles.emptyState}>
-                        <Text style={styles.emptyText}>Nenhum vendedor encontrado</Text>
-                      </View>
-                    )}
-                  </ScrollView>
-                </Surface>
-              </TouchableOpacity>
-            </Modal>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 

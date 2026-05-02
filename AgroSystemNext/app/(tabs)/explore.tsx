@@ -1,16 +1,19 @@
 import * as React from 'react';
-import { StyleSheet, View, Platform, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Surface, Provider as PaperProvider } from 'react-native-paper';
+import { StyleSheet, View, Platform, ScrollView, TouchableOpacity, TextInput as RNTextInput, Alert } from 'react-native';
+import { Text, Surface, Provider as PaperProvider, Button, TextInput } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { Key, ChevronRight, Leaf } from 'lucide-react-native';
+import { Key, ChevronRight, Leaf, Users, Check } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/constants/theme';
-import { getFullHeaders } from '@/src/config/api';
+import { getFullHeaders, api } from '@/src/config/api';
 
 export default function SettingsTabScreen() {
   const router = useRouter();
   const [userName, setUserName] = React.useState('');
+  const [teamId, setTeamId] = React.useState('');
+  const [teamInput, setTeamInput] = React.useState('');
   const [tokenCount, setTokenCount] = React.useState(0);
+  const [savingTeam, setSavingTeam] = React.useState(false);
 
   React.useEffect(() => {
     loadData();
@@ -21,15 +24,37 @@ export default function SettingsTabScreen() {
     if (token) {
       try {
         const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/profile`, {
-          headers: await getFullHeaders(token || undefined),
+          headers: await getFullHeaders(token),
         });
         const data = await response.json();
         if (data.data?.name) setUserName(data.data.name);
+        if (data.data?.teamId) {
+          setTeamId(data.data.teamId);
+          setTeamInput(data.data.teamId);
+        }
       } catch (_) {}
     }
     const tokens = await AsyncStorage.getItem('asaas_tokens');
     if (tokens) {
       setTokenCount(JSON.parse(tokens).length);
+    }
+  };
+
+  const saveTeam = async () => {
+    setSavingTeam(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await api.request('/auth/team', {
+        method: 'PATCH',
+        headers: await getFullHeaders(token || undefined),
+        body: JSON.stringify({ teamId: teamInput.trim() || null }),
+      });
+      setTeamId(teamInput.trim());
+      Alert.alert('Time atualizado', 'As rotas agora são compartilhadas com seu time.');
+    } catch (err: any) {
+      Alert.alert('Erro', err.message);
+    } finally {
+      setSavingTeam(false);
     }
   };
 
@@ -64,6 +89,41 @@ export default function SettingsTabScreen() {
               <ChevronRight size={20} color={AppColors.textMid} />
             </Surface>
           </TouchableOpacity>
+
+          <Surface style={styles.card} elevation={2}>
+            <View style={[styles.cardIcon, { backgroundColor: '#1a2a3a' }]}>
+              <Users size={24} color={AppColors.green} />
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>Time</Text>
+              <Text style={styles.cardDescription}>
+                {teamId ? `ID: ${teamId}` : 'Sem time definido'}
+              </Text>
+            </View>
+          </Surface>
+
+          <TextInput
+            label="ID do time"
+            value={teamInput}
+            onChangeText={setTeamInput}
+            mode="outlined"
+            style={styles.teamInput}
+            outlineColor={AppColors.border}
+            activeOutlineColor={AppColors.green}
+            textColor={AppColors.text}
+            placeholder="Ex: equipe-01"
+            placeholderTextColor={AppColors.textMid}
+          />
+          <Button
+            mode="contained"
+            onPress={saveTeam}
+            loading={savingTeam}
+            buttonColor={AppColors.green}
+            style={styles.teamButton}
+            icon={() => <Check size={18} color="#fff" />}
+          >
+            {teamId ? 'Atualizar time' : 'Definir time'}
+          </Button>
 
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutText}>Sair</Text>
@@ -146,5 +206,13 @@ const styles = StyleSheet.create({
     color: '#e57373',
     fontSize: 16,
     fontWeight: '600',
+  },
+  teamInput: {
+    backgroundColor: AppColors.inputBg,
+    marginBottom: 10,
+  },
+  teamButton: {
+    borderRadius: 8,
+    marginBottom: 20,
   },
 });
