@@ -13,6 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateInadimplentesHtml } from './inadimplentesPdf';
 import { AppColors } from '@/constants/theme';
+import { getFullHeaders } from '@/src/config/api';
 
 const isWeb = Platform.OS === 'web';
 
@@ -205,7 +206,7 @@ export default function RouteDetailScreen() {
       const token = await AsyncStorage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: await getFullHeaders(token || undefined),
       });
       const data = await response.json();
       if (data.status === 'success') {
@@ -255,7 +256,7 @@ export default function RouteDetailScreen() {
       
       const token = await AsyncStorage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = await getFullHeaders(token || undefined);
       
       const pollInterval = setInterval(async () => {
         try {
@@ -314,7 +315,7 @@ export default function RouteDetailScreen() {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(
         `${apiUrl}/clients/available?routeId=${route?.id}&search=${encodeURIComponent(query)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: await getFullHeaders(token || undefined) }
       );
       const data = await response.json();
       if (data.status === 'success') {
@@ -337,7 +338,7 @@ export default function RouteDetailScreen() {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(
         `${apiUrl}/clients/${client.id}/payments`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: await getFullHeaders(token || undefined) }
       );
       const data = await response.json();
       if (data.status === 'success') {
@@ -361,10 +362,7 @@ export default function RouteDetailScreen() {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/add-payment`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: await getFullHeaders(token || undefined),
         body: JSON.stringify({ routeId: route.id, paymentAsaasId, fichaNumber: ficha || null }),
       });
 
@@ -409,10 +407,7 @@ const addInstallmentToRoute = async (installmentAsaasId: string, ficha?: string)
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/add-installment`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: await getFullHeaders(token || undefined),
         body: JSON.stringify({ routeId: route.id, installmentAsaasId, fichaNumber: ficha || null }),
       });
 
@@ -483,7 +478,7 @@ const addInstallmentToRoute = async (installmentAsaasId: string, ficha?: string)
       for (const paymentId of paymentIdsToRemove) {
         await fetch(`${apiUrl}/routes/${route.id}/payments/${paymentId}`, {
           method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: await getFullHeaders(token || undefined),
         });
       }
 
@@ -636,7 +631,7 @@ const generateInadimplentesReport = async () => {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/${route.id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: await getFullHeaders(token || undefined),
       });
       
       if (response.ok) {

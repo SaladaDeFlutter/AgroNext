@@ -2,9 +2,7 @@ import { Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AsaasClient, AsaasPayment, AsaasCustomer, AsaasInstallment } from '../api/asaasClient.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { config } from '../config/index.js';
-
-const asaas = new AsaasClient(config.asaasAccessToken);
+import { getAsaasClients, getFirstAsaasClient } from '../api/asaasFactory.js';
 
 const refreshProgress = new Map<string, { total: number; current: number }>();
 
@@ -129,7 +127,8 @@ export const asaasController = {
         localPaymentMap.set(rp.payment.asaasId, rp.payment);
       }
 
-      // Batch-fetch payments by customer (1 call per customer instead of 1 per payment)
+      // Try each user-provided token to fetch live data, merge all results
+      const clients = getAsaasClients(req);
       const asaasPaymentMap = new Map<string, AsaasPayment>();
       const customerMap = new Map<string, AsaasCustomer>();
       const installmentMap = new Map<string, AsaasInstallment>();
@@ -137,25 +136,26 @@ export const asaasController = {
       const uniqueAsaasCustomerIds = [...new Set(dbClients.map(c => c.asaasId))];
 
       for (const asaasCustomerId of uniqueAsaasCustomerIds) {
-        let customer: AsaasCustomer | undefined;
-        try {
-          const [fetchedCustomer, fetchedPayments] = await Promise.all([
-            asaas.getCustomer(asaasCustomerId),
-            asaas.getPayments(asaasCustomerId),
-          ]);
-          customer = fetchedCustomer;
-          customerMap.set(asaasCustomerId, fetchedCustomer);
-
-          for (const pmt of fetchedPayments) {
-            if (asaasPaymentSet.has(pmt.id)) {
-              asaasPaymentMap.set(pmt.id, pmt);
+        let found = false;
+        for (const client of clients) {
+          try {
+            const [fetchedCustomer, fetchedPayments] = await Promise.all([
+              client.getCustomer(asaasCustomerId),
+              client.getPayments(asaasCustomerId),
+            ]);
+            customerMap.set(asaasCustomerId, fetchedCustomer);
+            for (const pmt of fetchedPayments) {
+              if (asaasPaymentSet.has(pmt.id)) {
+                asaasPaymentMap.set(pmt.id, pmt);
+              }
             }
+            found = true;
+            break;
+          } catch (_) {
+            continue;
           }
-        } catch (err) {
-          console.log(`Erro ao buscar dados do cliente ${asaasCustomerId}:`, err);
         }
-
-        if (!customer) {
+        if (!found) {
           customerMap.set(asaasCustomerId, {
             id: asaasCustomerId,
             name: asaasNameMap.get(asaasCustomerId) || 'Cliente',
@@ -163,18 +163,21 @@ export const asaasController = {
         }
       }
 
-      // Also fetch installments for payments that belong to one
+      // Fetch installments — try each token
       const installmentIds = [...new Set(
         routePayments
           .map(rp => rp.payment.installmentAsaasId)
           .filter((i): i is string => i !== null)
       )];
       for (const instId of installmentIds) {
-        try {
-          const installment = await asaas.getInstallment(instId);
-          installmentMap.set(instId, installment);
-        } catch (err) {
-          console.log(`Erro ao buscar installment ${instId}:`, err);
+        for (const client of clients) {
+          try {
+            const installment = await client.getInstallment(instId);
+            installmentMap.set(instId, installment);
+            break;
+          } catch (_) {
+            continue;
+          }
         }
       }
 
@@ -274,6 +277,7 @@ export const asaasController = {
   async addPaymentToRoute(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { routeId, paymentAsaasId, fichaNumber } = req.body;
+      const asaas = getFirstAsaasClient(req);
 
       const route = await prisma.route.findUnique({ where: { id: routeId } });
       if (!route) {
@@ -364,6 +368,7 @@ export const asaasController = {
   async addInstallmentToRoute(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { routeId, installmentAsaasId, fichaNumber } = req.body;
+      const asaas = getFirstAsaasClient(req);
 
       const route = await prisma.route.findUnique({ where: { id: routeId } });
       if (!route) {

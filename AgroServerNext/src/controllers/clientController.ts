@@ -1,12 +1,7 @@
 import { Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { AsaasClient } from '../api/asaasClient.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const getAsaasClient = () => new AsaasClient(process.env.ASAAS_ACCESS_TOKEN || '');
+import { getAsaasClients } from '../api/asaasFactory.js';
 
 export const clientController = {
   async findAll(req: AuthRequest, res: Response, next: NextFunction) {
@@ -104,8 +99,14 @@ export const clientController = {
         return res.json({ status: 'success', data: [] });
       }
       
-      const asaas = getAsaasClient();
-      const asaasCustomers = await asaas.getCustomers(String(search));
+      const clients = getAsaasClients(req);
+      const asaasCustomers: any[] = [];
+      for (const client of clients) {
+        try {
+          const found = await client.getCustomers(String(search));
+          asaasCustomers.push(...found);
+        } catch (_) { continue; }
+      }
       
       const availableClients = asaasCustomers.map(customer => ({
         id: customer.id,

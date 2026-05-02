@@ -2,12 +2,7 @@ import { Response, NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { AsaasClient } from '../api/asaasClient.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const asaas = new AsaasClient(process.env.ASAAS_ACCESS_TOKEN || '');
+import { getAsaasClients } from '../api/asaasFactory.js';
 
 export const paymentController = {
   async findByClient(req: AuthRequest, res: Response, next: NextFunction) {
@@ -27,10 +22,19 @@ export const paymentController = {
         }
       }
       
-      const [asaasPayments, asaasInstallments] = await Promise.all([
-        asaas.getPayments(asaasId),
-        asaas.getInstallments(asaasId)
-      ]);
+      const clients = getAsaasClients(req);
+      let asaasPayments: any[] = [];
+      let asaasInstallments: any[] = [];
+      for (const client of clients) {
+        try {
+          const [p, i] = await Promise.all([
+            client.getPayments(asaasId),
+            client.getInstallments(asaasId),
+          ]);
+          asaasPayments = asaasPayments.concat(p);
+          asaasInstallments = asaasInstallments.concat(i);
+        } catch (_) { continue; }
+      }
       
       const uniquePayments = asaasPayments.filter(p => !p.installment);
       const installmentIds = [...new Set(asaasPayments.filter(p => p.installment).map(p => p.installment))];

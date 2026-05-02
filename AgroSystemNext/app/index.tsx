@@ -17,11 +17,30 @@ const BORDER_GREY = '#404040';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const [checking, setChecking] = React.useState(true);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
+
+  React.useEffect(() => {
+    (async () => {
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        try {
+          await api.auth.getProfile(token);
+          router.replace('/(tabs)');
+          return;
+        } catch (_) {
+          await AsyncStorage.removeItem('token');
+        }
+      }
+      setChecking(false);
+    })();
+  }, []);
+
+  if (checking) return null;
 
   const onLogin = async () => {
     if (!email || !password) {

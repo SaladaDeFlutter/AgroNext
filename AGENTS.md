@@ -135,3 +135,12 @@ EXPO_PUBLIC_API_URL=http://localhost:3000/api
 ### Fluxo de dados
 
 DB é apenas índice de IDs → Asaas é fonte de verdade → ao adicionar pagamento, cria registro no DB e busca dados frescos do Asaas.
+
+### Multi-API
+
+Usuário pode cadastrar múltiplas chaves Asaas no frontend (Config > Chaves da API).
+- As chaves ficam em `AsyncStorage('asaas_tokens')` 
+- O frontend envia `asaas-token` header com todas as chaves ativas (separadas por `,`)
+- O backend tenta cada chave até uma funcionar (itera e captura exceções)
+- `asaas-token` não precisa ser enviado para rotas `/api/auth/*`
+- O token de config `.env` ainda funciona como fallback se nenhum header for enviado

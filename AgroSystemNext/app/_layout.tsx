@@ -15,12 +15,13 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
        <Stack>
-         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-         <Stack.Screen name="register" options={{ headerShown: false }} />
-         <Stack.Screen name="create-route" options={{ headerShown: false }} />
-       </Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+          <Stack.Screen name="register" options={{ headerShown: false }} />
+          <Stack.Screen name="create-route" options={{ headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
+        </Stack>
       <StatusBar style="light" />
     </ThemeProvider>
   );
