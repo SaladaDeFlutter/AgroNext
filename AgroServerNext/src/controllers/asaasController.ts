@@ -113,7 +113,8 @@ export const asaasController = {
       }
 
       const progressKey = `route-${id}`;
-      refreshProgress.set(progressKey, { total: routePayments.length, current: 0 });
+      const uniqueAsaasCustomerIds = [...new Set(dbClients.map(c => c.asaasId))];
+      refreshProgress.set(progressKey, { total: uniqueAsaasCustomerIds.length, current: 0 });
 
       const uniquePayments: AsaasPaymentData[] = [];
       const installmentGroups: Record<string, InstallmentGroup> = {};
@@ -146,8 +147,6 @@ export const asaasController = {
       const customerMap = new Map<string, AsaasCustomer>();
       const installmentMap = new Map<string, AsaasInstallment>();
 
-      const uniqueAsaasCustomerIds = [...new Set(dbClients.map(c => c.asaasId))];
-
       for (const asaasCustomerId of uniqueAsaasCustomerIds) {
         let found = false;
         for (const client of clients) {
@@ -174,6 +173,8 @@ export const asaasController = {
             name: asaasNameMap.get(asaasCustomerId) || 'Cliente',
           } as AsaasCustomer);
         }
+        const prog = refreshProgress.get(progressKey);
+        if (prog) prog.current++;
       }
 
       // Fetch installments — try each token
@@ -221,9 +222,6 @@ export const asaasController = {
             customerData: customerMap.get(customerId),
           } as AsaasPaymentData;
         }
-
-        const prog = refreshProgress.get(progressKey);
-        if (prog) prog.current++;
 
         if (paymentData.installment) {
           if (!installmentGroups[paymentData.installment]) {

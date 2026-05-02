@@ -853,7 +853,7 @@ const generateInadimplentesReport = async () => {
                 <View style={[styles.progressFill, { width: `${Math.min((refreshProgress / refreshTotal) * 100, 100)}%` }]} />
               </View>
               <Text style={styles.progressText}>
-                {refreshProgress} de {refreshTotal} pagamentos
+                {refreshProgress} de {refreshTotal} clientes
               </Text>
             </View>
           )}
