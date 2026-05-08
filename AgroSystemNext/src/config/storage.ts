@@ -1,7 +1,3 @@
-import { Platform } from 'react-native';
-
-const isWeb = Platform.OS === 'web';
-
 const webStorage = {
   getItem: (key: string): Promise<string | null> => {
     try { return Promise.resolve(localStorage.getItem(key)); }
@@ -21,19 +17,19 @@ const webStorage = {
 
 let nativeStorage: typeof webStorage | null = null;
 
-if (!isWeb) {
-  try {
+try {
+  if (typeof localStorage === 'undefined') {
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     nativeStorage = {
-      getItem: (key: string) => AsyncStorage.getItem(key),
-      setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
-      removeItem: (key: string) => AsyncStorage.removeItem(key),
+      getItem: (key: string) => AsyncStorage.getItem(key).catch(() => null),
+      setItem: (key: string, value: string) => AsyncStorage.setItem(key, value).catch(() => {}),
+      removeItem: (key: string) => AsyncStorage.removeItem(key).catch(() => {}),
     };
-  } catch {
-    nativeStorage = webStorage;
   }
+} catch {
+  nativeStorage = null;
 }
 
-const storage = isWeb ? webStorage : (nativeStorage || webStorage);
+const storage = nativeStorage || webStorage;
 
 export default storage;
