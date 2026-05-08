@@ -21,20 +21,9 @@ export default function HomeScreen() {
   const [regLoading, setRegLoading] = React.useState(false);
 
   React.useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const token = await storage.getItem('token');
-        if (token) {
-          const result = await api.auth.getProfile(token);
-          if (result.data?.name) {
-            setUserName(result.data.name);
-          }
-        }
-      } catch (error) {
-        console.log('Error loading user:', error);
-      }
-    };
-    loadUser();
+    storage.getItem('user_name').then(name => {
+      if (name) setUserName(name);
+    });
   }, []);
 
   const registerSeller = async () => {
