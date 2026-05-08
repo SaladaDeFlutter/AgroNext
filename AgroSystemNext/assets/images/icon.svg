@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4CAF50"/>
+      <stop offset="100%" stop-color="#2E7D32"/>
+    </linearGradient>
+  </defs>
+  <!-- Folha esquerda -->
+  <path d="M512 900 C300 750 200 500 300 250 C350 150 450 120 512 512 Z"
+        fill="url(#g)" opacity="0.9"/>
+  <!-- Folha direita -->
+  <path d="M512 900 C724 750 824 500 724 250 C674 150 574 120 512 512 Z"
+        fill="url(#g)" opacity="0.7"/>
+  <!-- Haste -->
+  <rect x="502" y="520" width="20" height="400" rx="10" fill="#388E3C"/>
+  <!-- Círculo tecnológico central -->
+  <circle cx="512" cy="512" r="80" fill="none" stroke="#81C784" stroke-width="6" opacity="0.6"/>
+  <circle cx="512" cy="512" r="55" fill="none" stroke="#A5D6A7" stroke-width="4" opacity="0.4"/>
+  <circle cx="512" cy="512" r="15" fill="#66BB6A"/>
+</svg>

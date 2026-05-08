@@ -296,8 +296,9 @@ export const asaasController = {
   async addPaymentToRoute(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { routeId, paymentAsaasId, fichaNumber } = req.body;
-      const asaas = getFirstAsaasClient(req);
-      if (!asaas) return res.status(400).json({ status: 'error', message: 'Nenhuma chave da API configurada. Adicione em Config > Chaves da API.' });
+
+      const clients = getAsaasClients(req);
+      if (clients.length === 0) return res.status(400).json({ status: 'error', message: 'Nenhuma chave da API configurada. Adicione em Config > Chaves da API.' });
 
       const route = await prisma.route.findUnique({ where: { id: routeId } });
       if (!route) {
@@ -305,18 +306,38 @@ export const asaasController = {
       }
 
       const userId = req.userId!;
-      const userData = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
-      const canAccess = route.userId === userId || (userData?.teamId && route.teamId === userData.teamId);
-      if (!canAccess) throw new AppError('Acesso negado', 403);
+      const teamUserIds = await getTeamUserIds(userId);
+      if (![...teamUserIds, userId].includes(route.userId || '')) throw new AppError('Acesso negado', 403);
 
-      const payment = await asaas.getPayment(paymentAsaasId);
+      let payment: AsaasPayment | null = null;
+      let asaas: AsaasClient | null = null;
+      for (const client of clients) {
+        try {
+          payment = await client.getPayment(paymentAsaasId);
+          asaas = client;
+          break;
+        } catch (_) {
+          continue;
+        }
+      }
+      if (!payment || !asaas) throw new AppError('Pagamento não encontrado', 404);
       
       let client = await prisma.client.findFirst({
         where: { asaasId: payment.customer }
       });
 
       if (!client) {
-        const customer = await asaas.getCustomer(payment.customer);
+        let customer: AsaasCustomer | null = null;
+        for (const c of clients) {
+          try {
+            customer = await c.getCustomer(payment.customer);
+            asaas = c;
+            break;
+          } catch (_) {
+            continue;
+          }
+        }
+        if (!customer) throw new AppError('Cliente não encontrado no Asaas', 404);
         client = await prisma.client.create({
           data: {
             asaasId: customer.id,
@@ -369,8 +390,15 @@ export const asaasController = {
         });
       }
 
-      // Get customer data for the response
-      const customer = await asaas.getCustomer(payment.customer);
+      let customer: AsaasCustomer | null = null;
+      for (const c of clients) {
+        try {
+          customer = await c.getCustomer(payment.customer);
+          break;
+        } catch (_) {
+          continue;
+        }
+      }
 
       res.json({
         status: 'success',
@@ -393,8 +421,9 @@ export const asaasController = {
   async addInstallmentToRoute(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { routeId, installmentAsaasId, fichaNumber } = req.body;
-      const asaas = getFirstAsaasClient(req);
-      if (!asaas) return res.status(400).json({ status: 'error', message: 'Nenhuma chave da API configurada. Adicione em Config > Chaves da API.' });
+
+      const clients = getAsaasClients(req);
+      if (clients.length === 0) return res.status(400).json({ status: 'error', message: 'Nenhuma chave da API configurada. Adicione em Config > Chaves da API.' });
 
       const route = await prisma.route.findUnique({ where: { id: routeId } });
       if (!route) {
@@ -402,11 +431,21 @@ export const asaasController = {
       }
 
       const userId = req.userId!;
-      const userData = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
-      const canAccess = route.userId === userId || (userData?.teamId && route.teamId === userData.teamId);
-      if (!canAccess) throw new AppError('Acesso negado', 403);
+      const teamUserIds = await getTeamUserIds(userId);
+      if (![...teamUserIds, userId].includes(route.userId || '')) throw new AppError('Acesso negado', 403);
 
-      const installmentPayments = await asaas.getInstallmentPayments(installmentAsaasId);
+      let installmentPayments: AsaasPayment[] | null = null;
+      let asaas: AsaasClient | null = null;
+      for (const client of clients) {
+        try {
+          installmentPayments = await client.getInstallmentPayments(installmentAsaasId);
+          asaas = client;
+          break;
+        } catch (_) {
+          continue;
+        }
+      }
+      if (!installmentPayments || !asaas) throw new AppError('Parcelamento não encontrado', 404);
       
       if (installmentPayments.length === 0) {
         return res.status(404).json({ status: 'error', message: 'Nenhum pagamento encontrado' });
@@ -419,7 +458,17 @@ export const asaasController = {
       });
 
       if (!client) {
-        const customer = await asaas.getCustomer(customerId);
+        let customer: AsaasCustomer | null = null;
+        for (const c of clients) {
+          try {
+            customer = await c.getCustomer(customerId);
+            asaas = c;
+            break;
+          } catch (_) {
+            continue;
+          }
+        }
+        if (!customer) throw new AppError('Cliente não encontrado no Asaas', 404);
         client = await prisma.client.create({
           data: {
             asaasId: customer.id,
@@ -475,8 +524,25 @@ export const asaasController = {
         });
       }
 
-      const installment = await asaas.getInstallment(installmentAsaasId);
-      const customer = await asaas.getCustomer(customerId);
+      let installment: AsaasInstallment | null = null;
+      for (const c of clients) {
+        try {
+          installment = await c.getInstallment(installmentAsaasId);
+          break;
+        } catch (_) {
+          continue;
+        }
+      }
+
+      let customer: AsaasCustomer | null = null;
+      for (const c of clients) {
+        try {
+          customer = await c.getCustomer(customerId);
+          break;
+        } catch (_) {
+          continue;
+        }
+      }
 
       res.json({
         status: 'success',
@@ -486,19 +552,19 @@ export const asaasController = {
           installmentAsaasId,
           fichaNumber: fichaNumber || null,
           installmentGroup: {
-            installmentId: installment.id,
+            installmentId: installment?.id || installmentAsaasId,
             customerId,
-            customerName: customer.name,
+            customerName: customer?.name || 'Cliente',
             totalValue: installmentPayments.reduce((sum, p) => sum + (p.value || 0), 0),
-            installmentCount: installment.installmentCount,
-            valuePerInstallment: installment.paymentValue || installment.value / installment.installmentCount,
+            installmentCount: installment?.installmentCount || installmentPayments.length,
+            valuePerInstallment: installment ? (installment.paymentValue || installment.value / installment.installmentCount) : installmentPayments[0].value,
             status: installmentPayments[0].status,
             dueDate: installmentPayments[0].dueDate,
-            customerData: customer,
-            installmentData: installment,
+            customerData: customer || undefined,
+            installmentData: installment || undefined,
             payments: installmentPayments.map(p => ({
               ...p,
-              customerData: customer
+              customerData: customer || undefined
             }))
           }
         }
@@ -518,9 +584,8 @@ export const asaasController = {
       }
 
       const userId = req.userId!;
-      const userData = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
-      const canAccess = route.userId === userId || (userData?.teamId && route.teamId === userData.teamId);
-      if (!canAccess) throw new AppError('Acesso negado', 403);
+      const teamUserIds = await getTeamUserIds(userId);
+      if (![...teamUserIds, userId].includes(route.userId || '')) throw new AppError('Acesso negado', 403);
 
       const dbPayment = await prisma.payment.findFirst({
         where: { asaasId: paymentId }

@@ -4,7 +4,7 @@ import { TextInput, Button, Text, Surface, Provider as PaperProvider } from 'rea
 import { useRouter, Link } from 'expo-router';
 import { ArrowLeft, Mail, Lock, User, Leaf } from 'lucide-react-native';
 import { api } from '@/src/config/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@/src/config/storage';
 
 const GREEN_MAIN = '#15B86A';
 const GREEN_LIGHT = '#e8f5ee';
@@ -48,7 +48,7 @@ export default function RegisterScreen() {
 
     try {
       const response = await api.auth.register(name, email, password);
-      await AsyncStorage.setItem('token', response.data.token);
+      await storage.setItem('token', response.data.token);
       router.replace('/(tabs)');
     } catch (err: any) {
       setError(err.message || 'Erro ao criar conta');

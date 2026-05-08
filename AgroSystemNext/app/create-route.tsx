@@ -3,7 +3,7 @@ import { StyleSheet, View, Platform, Pressable, ScrollView, Modal, TouchableOpac
 import { TextInput, Button, Text, Surface, Provider as PaperProvider } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Route as RouteIcon, User, Check, ChevronDown } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@/src/config/storage';
 import { getFullHeaders } from '@/src/config/api';
 import { AppColors } from '@/constants/theme';
 
@@ -30,7 +30,7 @@ export default function CreateRouteScreen() {
 
   React.useEffect(() => {
     (async () => {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       if (!token) return;
       try {
         const [profileRes, sellersRes] = await Promise.all([
@@ -70,7 +70,7 @@ export default function CreateRouteScreen() {
     setLoading(true);
 
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes`, {
         method: 'POST',

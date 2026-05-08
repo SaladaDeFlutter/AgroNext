@@ -4,7 +4,7 @@ import { TextInput, Button, Text, Surface, Provider as PaperProvider } from 'rea
 import { Link, useRouter } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, Leaf } from 'lucide-react-native';
 import { api } from '@/src/config/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@/src/config/storage';
 
 const GREEN_MAIN = '#15B86A';
 const GREEN_LIGHT = '#e8f5ee';
@@ -26,14 +26,14 @@ export default function LoginScreen() {
 
   React.useEffect(() => {
     (async () => {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       if (token) {
         try {
           await api.auth.getProfile(token);
           router.replace('/(tabs)');
           return;
         } catch (_) {
-          await AsyncStorage.removeItem('token');
+          await storage.removeItem('token');
         }
       }
       setChecking(false);
@@ -53,7 +53,7 @@ export default function LoginScreen() {
 
     try {
       const response = await api.auth.login(email, password);
-      await AsyncStorage.setItem('token', response.data.token);
+      await storage.setItem('token', response.data.token);
       router.replace('/(tabs)');
     } catch (err: any) {
       console.error('Login error:', err);

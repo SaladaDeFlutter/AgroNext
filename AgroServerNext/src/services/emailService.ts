@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config/index.js';
+import { logger } from '../lib/logger.js';
 
 const transporter = nodemailer.createTransport({
   host: config.smtpHost,
@@ -45,9 +46,9 @@ export const emailService = {
 
     try {
       await transporter.sendMail(mailOptions);
-      console.log(`Verification code sent to ${email}`);
+      logger.info(`Verification code sent to ${email}`);
     } catch (error) {
-      console.error('Error sending email:', error);
+      logger.error(`Error sending email to ${email}`, error as Error);
       throw error;
     }
   },

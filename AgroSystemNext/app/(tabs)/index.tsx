@@ -3,7 +3,7 @@ import { StyleSheet, View, Platform, ScrollView, TouchableOpacity, Modal, Alert 
 import { Text, Surface, Provider as PaperProvider, TextInput, Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Leaf, FileText, LogOut, Route as RouteIcon, UserPlus } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@/src/config/storage';
 import { api, getFullHeaders } from '@/src/config/api';
 import { AppColors } from '@/constants/theme';
 
@@ -23,7 +23,7 @@ export default function HomeScreen() {
   React.useEffect(() => {
     const loadUser = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
+        const token = await storage.getItem('token');
         if (token) {
           const result = await api.auth.getProfile(token);
           if (result.data?.name) {
@@ -43,7 +43,7 @@ export default function HomeScreen() {
     }
     setRegLoading(true);
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const headers = await getFullHeaders(token || undefined);
       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/register`, {
         method: 'POST', headers, body: JSON.stringify({
@@ -63,7 +63,7 @@ export default function HomeScreen() {
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('token');
+    await storage.removeItem('token');
     if (Platform.OS === 'web') {
       window.location.href = '/';
     } else {

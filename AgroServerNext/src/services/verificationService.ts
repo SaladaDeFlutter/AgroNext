@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { emailService } from './emailService.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { logger } from '../lib/logger.js';
 
 const CODE_LENGTH = 6;
 const CODE_EXPIRY_MINUTES = 15;
@@ -41,7 +42,7 @@ export const verificationService = {
     try {
       await emailService.sendVerificationCode(email, code);
     } catch (error) {
-      console.error('Failed to send verification email:', error);
+      logger.error('Failed to send verification email', error as Error);
       throw new AppError('Falha ao enviar email de verificação', 500);
     }
 

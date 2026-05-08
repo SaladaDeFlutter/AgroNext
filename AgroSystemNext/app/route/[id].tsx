@@ -10,8 +10,9 @@ import {
   ChevronDown, ChevronUp, ChevronRight, DollarSign, Plus, X, Search, Trash2,
   CreditCard, Layers, RefreshCw, FileText
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@/src/config/storage';
 import { generateInadimplentesHtml } from './inadimplentesPdf';
+import { generateCompletoHtml } from './completoPdf';
 import { AppColors } from '@/constants/theme';
 import { getFullHeaders } from '@/src/config/api';
 
@@ -203,7 +204,7 @@ export default function RouteDetailScreen() {
 
   const loadRoute = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/${id}`, {
         headers: await getFullHeaders(token || undefined),
@@ -224,7 +225,7 @@ export default function RouteDetailScreen() {
 
   const saveToCache = async (uniquePmt: any[], installmentGrp: any[], ficha?: Record<string, string>) => {
     const cacheKey = CACHE_PREFIX + id;
-    await AsyncStorage.setItem(cacheKey, JSON.stringify({
+    await storage.setItem(cacheKey, JSON.stringify({
       uniquePayments: uniquePmt,
       installmentGroups: installmentGrp,
       routeClients: ficha || fichaMap
@@ -236,7 +237,7 @@ export default function RouteDetailScreen() {
     
     if (useCache) {
       try {
-        const cached = await AsyncStorage.getItem(cacheKey);
+        const cached = await storage.getItem(cacheKey);
         if (cached) {
           const data = JSON.parse(cached);
           setUniquePayments(data.uniquePayments || []);
@@ -254,7 +255,7 @@ export default function RouteDetailScreen() {
       setRefreshProgress(0);
       setRefreshTotal(0);
       
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const headers = await getFullHeaders(token || undefined);
       
@@ -283,7 +284,7 @@ export default function RouteDetailScreen() {
         setInstallmentGroups(data.data.installmentGroups || []);
         setFichaMap(data.data.routeClients || {});
         
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(data.data));
+        await storage.setItem(cacheKey, JSON.stringify(data.data));
       }
     } catch (err) {
       console.error('Error loading Asaas data:', err);
@@ -311,7 +312,7 @@ export default function RouteDetailScreen() {
 
     setLoadingClients(true);
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(
         `${apiUrl}/clients/available?routeId=${route?.id}&search=${encodeURIComponent(query)}`,
@@ -334,7 +335,7 @@ export default function RouteDetailScreen() {
     setLoadingPayments(true);
     
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(
         `${apiUrl}/clients/${client.id}/payments`,
@@ -358,7 +359,7 @@ export default function RouteDetailScreen() {
     setAddingPayment(true);
 
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/add-payment`, {
         method: 'POST',
@@ -403,7 +404,7 @@ const addInstallmentToRoute = async (installmentAsaasId: string, ficha?: string)
     setAddingPayment(true);
 
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/add-installment`, {
         method: 'POST',
@@ -463,7 +464,7 @@ const addInstallmentToRoute = async (installmentAsaasId: string, ficha?: string)
     setRemovingClient(true);
 
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       
       const paymentIdsToRemove: string[] = [];
@@ -495,7 +496,7 @@ const addInstallmentToRoute = async (installmentAsaasId: string, ficha?: string)
       setClientsData(newClientsData);
 
       const cacheKey = CACHE_PREFIX + route.id;
-      await AsyncStorage.setItem(cacheKey, JSON.stringify({
+      await storage.setItem(cacheKey, JSON.stringify({
         uniquePayments: updatedUniquePayments,
         installmentGroups: updatedInstallmentGroups
       }));
@@ -511,7 +512,70 @@ const addInstallmentToRoute = async (installmentAsaasId: string, ficha?: string)
     }
   };
 
-const generateInadimplentesReport = async () => {
+const generateCompletoReport = async () => {
+    setGeneratingReport(true);
+    
+    try {
+      if (!clientsData || clientsData.length === 0) {
+        alert('Nao ha clientes nesta rota.');
+        setGeneratingReport(false);
+        return;
+      }
+
+      const monthNames = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      const reportDate = new Date().toLocaleDateString('pt-BR');
+      const routeName = route?.name || 'Rota';
+      const routeMonth = route ? `${monthNames[route.month - 1]} / ${route.year}` : '';
+
+      const html = generateCompletoHtml(
+        clientsData,
+        summary,
+        routeName,
+        routeMonth,
+        reportDate,
+        getClientStats,
+        getClientStatus
+      );
+
+      if (isWeb) {
+        const mesAtual = new Date().getMonth() + 1;
+        const anoAtual = new Date().getFullYear();
+        const titulo = `completo_${route?.name || 'rota'}_${mesAtual}_${anoAtual}`;
+        
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.title = titulo;
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.onload = () => {
+            printWindow.print();
+          };
+        }
+      } else {
+        const mesAtual = new Date().getMonth() + 1;
+      const anoAtual = new Date().getFullYear();
+      const nomeArquivo = `completo_${route?.name || 'rota'}_${mesAtual}_${anoAtual}`;
+      
+      const { uri } = await Print.printToFileAsync({ html });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Compartilhar Relatório Completo',
+            UTI: 'com.adobe.pdf'
+          });
+        } else {
+          alert('PDF gerado em: ' + uri);
+        }
+      }
+    } catch (error) {
+      console.error('Error generating complete report:', error);
+      alert('Erro ao gerar relatório completo');
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const generateInadimplentesReport = async () => {
     setGeneratingReport(true);
     
     try {
@@ -627,7 +691,7 @@ const generateInadimplentesReport = async () => {
     setDeleting(true);
     
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes/${route.id}`, {
         method: 'DELETE',
@@ -1469,6 +1533,7 @@ const generateInadimplentesReport = async () => {
                 style={styles.reportOption}
                 onPress={() => {
                   setReportModalVisible(false);
+                  generateCompletoReport();
                 }}
               >
                 <FileText size={24} color={GREEN_MAIN} />

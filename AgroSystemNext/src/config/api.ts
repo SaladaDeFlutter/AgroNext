@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from './storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -13,19 +13,19 @@ export interface AsaasToken {
 const TOKENS_KEY = 'asaas_tokens';
 
 export async function getActiveTokens(): Promise<AsaasToken[]> {
-  const raw = await AsyncStorage.getItem(TOKENS_KEY);
+  const raw = await storage.getItem(TOKENS_KEY);
   if (!raw) return [];
   const tokens: AsaasToken[] = JSON.parse(raw);
   return tokens.filter(t => t.active);
 }
 
 export async function getAllTokens(): Promise<AsaasToken[]> {
-  const raw = await AsyncStorage.getItem(TOKENS_KEY);
+  const raw = await storage.getItem(TOKENS_KEY);
   return raw ? JSON.parse(raw) : [];
 }
 
 export async function saveTokens(tokens: AsaasToken[]): Promise<void> {
-  await AsyncStorage.setItem(TOKENS_KEY, JSON.stringify(tokens));
+  await storage.setItem(TOKENS_KEY, JSON.stringify(tokens));
 }
 
 export async function getAsaasTokenHeader(): Promise<Record<string, string>> {

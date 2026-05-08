@@ -3,7 +3,7 @@ import { StyleSheet, View, Platform, Pressable, ScrollView, TouchableOpacity, Re
 import { Text, Surface, Provider as PaperProvider, ActivityIndicator } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { ArrowLeft, Route as RouteIcon, Calendar, User, FileText, MapPin } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@/src/config/storage';
 
 const GREEN_MAIN = '#15B86A';
 const BG_DARK = '#0d0d0d';
@@ -47,7 +47,7 @@ export default function ReportsScreen() {
 
   const loadRoutes = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await storage.getItem('token');
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
       const response = await fetch(`${apiUrl}/routes`, {
         headers: { Authorization: `Bearer ${token}` },

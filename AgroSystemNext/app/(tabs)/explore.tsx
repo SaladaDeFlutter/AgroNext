@@ -3,7 +3,7 @@ import { StyleSheet, View, Platform, ScrollView, TouchableOpacity, Alert } from 
 import { Text, Surface, Provider as PaperProvider, Button, TextInput } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { Key, ChevronRight, Leaf, Users, Copy, LogIn, RefreshCw, Trash2 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@/src/config/storage';
 import { AppColors } from '@/constants/theme';
 import { getFullHeaders } from '@/src/config/api';
 
@@ -23,7 +23,7 @@ export default function SettingsTabScreen() {
 
   React.useEffect(() => {
     (async () => {
-      token.current = await AsyncStorage.getItem('token');
+      token.current = await storage.getItem('token');
       if (token.current) loadData();
     })();
   }, []);
@@ -49,7 +49,7 @@ export default function SettingsTabScreen() {
       setTeam(teamRes.data);
       setTeamName(teamRes.data?.name || '');
     } catch (_) {}
-    const t = await AsyncStorage.getItem('asaas_tokens');
+    const t = await storage.getItem('asaas_tokens');
     if (t) setTokenCount(JSON.parse(t).length);
   };
 
@@ -120,7 +120,7 @@ export default function SettingsTabScreen() {
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('token');
+    await storage.removeItem('token');
     if (Platform.OS === 'web') {
       window.location.href = '/';
     } else {
