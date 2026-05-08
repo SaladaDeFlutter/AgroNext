@@ -55,9 +55,10 @@ export const api = {
     const url = `${API_BASE_URL}${endpoint}`;
     const asaasHeader = await getAsaasTokenHeader();
 
+    const { headers: optHeaders, ...restOptions } = options;
     const config: RequestInit = {
-      headers: mergeHeaders({ 'Content-Type': 'application/json' }, asaasHeader, options.headers as Record<string, string> | undefined),
-      ...options,
+      ...restOptions,
+      headers: mergeHeaders({ 'Content-Type': 'application/json' }, asaasHeader, optHeaders as Record<string, string> | undefined),
     };
 
     const response = await fetch(url, config);
